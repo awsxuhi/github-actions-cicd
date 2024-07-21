@@ -26,7 +26,7 @@ def handler(event, context):
 
     version = os.environ.get("VERSION", "0.0")
     response_body = {
-        "message": "Hello, this is a demo site to show how to achieve CICD by using github actions and AWS CDK. 👋",
+        "message": "Hello, this demo is to show how to achieve CICD by using github actions and AWS CDK. 👋",
         "version": version,
         "visit_count": new_visit_count,
     }
