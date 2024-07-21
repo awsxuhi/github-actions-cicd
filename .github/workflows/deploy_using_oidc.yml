@@ -1,0 +1,66 @@
+name: Deploy to AWS using OIDC
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read # This is required for actions/checkout
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Cache Node.js dependencies
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ./node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('./package-lock.json') }}
+
+      - name: Install CDK dependencies
+        working-directory: ./
+        run: npm ci
+        if: steps.cache.outputs.cache-hit != 'true'
+
+      # - name: Build CDK stack (needed because of Typescript)
+      #   working-directory: ./
+      #   run: npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-duration-seconds: 3600
+
+      - name: Get AWS credentials (Optional Step)
+        run: aws sts get-caller-identity
+
+      - name: Deploy CDK stack
+        working-directory: ./
+        run: |
+          export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity | jq -r '.Account')
+          npx cdk deploy --require-approval never
+          echo "Deployment complete."
+
+      # - name: Deploy CDK stack
+      #   working-directory: ./
+      #   run: npx cdk deploy --require-approval never
+      #   env:
+      #     AWS_ACCESS_KEY_ID: ${{ secrets.BETA_AWS_ACCESS_KEY_ID }}
+      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.BETA_AWS_SECRET_ACCESS_KEY }}
+      #     AWS_REGION: "ap-southeast-2"
+
+      # export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)

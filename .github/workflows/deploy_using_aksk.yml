@@ -1,9 +1,7 @@
-name: Deploy to AWS (CDK)
+name: Deploy to AWS using AK/SK
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -11,16 +9,16 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: 18
 
       - name: Cache Node.js dependencies
         id: cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ./node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('./package-lock.json') }}
@@ -34,6 +32,6 @@ jobs:
         working-directory: ./
         run: npx cdk deploy --require-approval never
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.BETA_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.BETA_AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: "ap-southeast-2"
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
