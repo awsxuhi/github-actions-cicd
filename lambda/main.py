@@ -1,6 +1,6 @@
 import os
 import boto3
-import json
+# import json
 
 def handler(event, context):
     # Raw event data.
@@ -40,7 +40,8 @@ def handler(event, context):
         "commit_hash": commit_hash,
     }
     
-    return {
-        "statusCode": 200,
-        "body": json.dumps(response_body)  # Ensure the response body is JSON serialized
-    }
+    return {"statusCode": 200, "body": response_body}
+    # return {
+    #     "statusCode": 200,
+    #     "body": json.dumps(response_body)  # Ensure the response body is JSON serialized
+    # }
