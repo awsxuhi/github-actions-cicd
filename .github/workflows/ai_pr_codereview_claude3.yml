@@ -46,14 +46,18 @@ jobs:
           escaped_code=$(echo "$changed_code" | jq -s -R -r @json)
 
           # Call Claude 3 Sonnet using AWS Bedrock
-          response=$(aws bedrock-runtime invoke-model \
+          aws bedrock-runtime invoke-model \
             --model-id arn:aws:bedrock:us-east-1::model/claude3-sonnet \
             --body "{
               \"input\": {
                 \"text\": $escaped_code
               }
             }" \
-            --content-type "application/json")
+            --content-type "application/json" \
+            output.json
+
+          # Read the response from the output file
+          response=$(cat output.json)
 
           echo "This is the response $response"
 
