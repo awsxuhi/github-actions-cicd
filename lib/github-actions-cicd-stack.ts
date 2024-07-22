@@ -26,6 +26,7 @@ export class GithubActionsCicdStack extends cdk.Stack {
       handler: "main.handler",
       environment: {
         VERSION: process.env.VERSION || "0.0",
+        COMMIT_HASH: process.env.COMMIT_HASH || "unknown",
         TABLE_NAME: table.tableName,
       },
     });

@@ -19,6 +19,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Get current commit hash
+        id: get_commit_hash
+        run: echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Print current commit hash
+        run: |
+          echo "Current commit hash: ${{ env.COMMIT_HASH }}"
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -52,6 +60,8 @@ jobs:
 
       - name: Deploy CDK stack
         working-directory: ./
+        env:
+          COMMIT_HASH: ${{ env.COMMIT_HASH }}
         run: |
           export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity | jq -r '.Account')
           npx cdk deploy --require-approval never
