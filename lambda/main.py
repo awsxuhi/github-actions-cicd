@@ -34,7 +34,7 @@ def handler(event, context):
     commit_hash = os.environ.get("COMMIT_HASH", "unknown")
 
     response_body = {
-        "message": "Hello, this demo is to show how to achieve CICD by using github actions and AWS CDK. 👋",
+        "message": "Hello, this demo is to show how to achieve CICD+woeioe by using github actions and AWS CDK. 👋",
         "version": version,
         "visit_count": new_visit_count,
         "commit_hash": commit_hash,
