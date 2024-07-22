@@ -1,0 +1,66 @@
+name: GPT Code Review
+
+on:
+  pull_request:
+permissions:
+  issues: write
+  pull-requests: write
+  id-token: write # This is required for requesting the JWT
+  contents: read # This is required for actions/checkout
+
+jobs:
+  code_review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: GrantBirki/git-diff-action@v2.4.0 # A github action for gathering the git diff of our pull request
+        id: git-diff
+        with:
+          raw_diff_file_output: diff.txt
+          file_output_only: "true" #Makes us exclude printing the diff on the console for security purposes
+
+      - name: Perfom Code Review With gpt-4
+        id: code_review_suggestions
+        run: |
+          # Get the code changes
+          changed_code=$(cat ${{steps.git-diff.outputs.raw-diff-path}})
+
+          echo "PR Changes $changed_code"
+
+          # Escape newlines and double quotes in the changed_code
+          escaped_code=$(echo "$changed_code" | jq -s -R -r @json)
+
+          response=$(curl -s https://api.openai.com/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.OPEN_AI_KEY }}" \
+            -d "{
+              \"model\": \"gpt-4\",
+              \"messages\": [
+                { \"role\": \"system\", \"content\": \"${{ vars.CODE_REVIEW_PROMPT }}\" },
+                { \"role\": \"user\", \"content\": $escaped_code }
+              ]
+            }")
+
+          echo "This is the response $response"
+
+          code_review_suggestions=$(echo "$response" | jq -r '.choices[0].message.content')
+
+          echo "$code_review_suggestions" > code_suggestions.txt
+
+      - name: Add Code Suggestions Comment
+        run: |
+          cat code_suggestions.txt
+
+          escaped_comments=$(echo "$(cat code_suggestions.txt)" | jq -s -R -r @json)
+
+          curl -s -L \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.number }}/comments \
+            -d "{\"body\":$escaped_comments\"}"
