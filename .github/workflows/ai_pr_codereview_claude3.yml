@@ -1,4 +1,4 @@
-name: GPT Code Review
+name: Claude3 Code Review
 
 on:
   pull_request:
@@ -11,6 +11,7 @@ permissions:
 jobs:
   code_review:
     runs-on: ubuntu-latest
+    environment: production # 指定环境为 production
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
