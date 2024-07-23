@@ -50,10 +50,5 @@ export class GithubActionsCicdStack extends cdk.Stack {
     new cdk.CfnOutput(this, "ApiUrl", {
       value: api.url,
     });
-
-    // Output the full API URL including the stage
-    new cdk.CfnOutput(this, "ApiUrl_ToTriggerLambda", {
-      value: `${api.url}api/`, // Ensure this matches your stage name
-    });
   }
 }
