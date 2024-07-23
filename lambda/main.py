@@ -1,18 +1,26 @@
 import os
 import boto3
-# import json
+import json
 
 def handler(event, context):
     # Raw event data.
-    path = event.get("rawPath")
+    path = event.get("rawPath", "/")
     if path != "/":
-        return {"statusCode": 404, "body": "Not found. Please request the root path."}
+        return {
+            "statusCode": 404,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"message": "Not found. Please request the root path."})
+        }
 
     # Get a reference to the DynamoDB table.
     dynamodb = boto3.resource("dynamodb")
     table_name = os.environ.get("TABLE_NAME")
     if not table_name:
-        return {"statusCode": 500, "body": "Environment variable TABLE_NAME not set."}
+        return {
+            "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"message": "Environment variable TABLE_NAME not set."})
+        }
 
     table = dynamodb.Table(table_name)
 
@@ -28,7 +36,11 @@ def handler(event, context):
         new_visit_count = visit_count + 1
         table.put_item(Item={"key": "visit_count", "value": new_visit_count})
     except Exception as e:
-        return {"statusCode": 500, "body": f"Error accessing DynamoDB: {str(e)}"}
+        return {
+            "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"message": f"Error accessing DynamoDB: {str(e)}"})
+        }
 
     version = os.environ.get("VERSION", "0.0")
     commit_hash = os.environ.get("COMMIT_HASH", "unknown")
@@ -40,8 +52,8 @@ def handler(event, context):
         "commit_hash": commit_hash,
     }
     
-    return {"statusCode": 200, "body": response_body}
-    # return {
-    #     "statusCode": 200,
-    #     "body": json.dumps(response_body)  # Ensure the response body is JSON serialized
-    # }
+    return {
+        "statusCode": 200,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps(response_body)
+    }

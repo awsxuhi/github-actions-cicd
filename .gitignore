@@ -9,3 +9,5 @@ cdk.out
 
 # output of `npm run build`
 typescript_output
+
+.vscode
