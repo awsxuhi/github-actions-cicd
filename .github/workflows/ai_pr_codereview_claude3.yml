@@ -50,9 +50,12 @@ jobs:
           ascii_code=$(echo "$escaped_code" | iconv -c -f utf-8 -t ascii//TRANSLIT)
           echo "ASCII PR Changes: $ascii_code"
 
+          # Debugging model-id
+          echo "Using model-id: anthropic.claude-3-sonnet-20240229-v1:0"
+
           # Call Claude 3 Sonnet using AWS Bedrock
           aws bedrock-runtime invoke-model \
-            --model-id arn:aws:bedrock:us-east-1::model/claude3-sonnet \
+            --model-id anthropic.claude-3-sonnet-20240229-v1:0 \
             --body "{
               \"input\": {
                 \"text\": $ascii_code
