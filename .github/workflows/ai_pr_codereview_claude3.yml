@@ -51,7 +51,21 @@ jobs:
           echo "ASCII PR Changes: $ascii_code"
 
           # Prepare the input JSON
-          input_json=$(jq -n --arg text "$ascii_code" '{input: {text: $text}}')
+          input_json=$(jq -n --arg text "$ascii_code" '{
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": 1000,
+            "messages": [
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": $text
+                  }
+                ]
+              }
+            ]
+          }')
           echo "Input JSON: $input_json"
 
           # Debugging model-id
@@ -60,15 +74,16 @@ jobs:
           # Call Claude 3 Sonnet using AWS Bedrock
           aws bedrock-runtime invoke-model \
             --model-id anthropic.claude-3-sonnet-20240229-v1:0 \
-            --body "$input_json" \
             --content-type "application/json" \
+            --accept "application/json" \
+            --body "$input_json" \
             output.json
 
           # Read the response from the output file
           response=$(cat output.json)
           echo "This is the response $response"
 
-          code_review_suggestions=$(echo "$response" | jq -r '.outputs[0].content')
+          code_review_suggestions=$(echo "$response" | jq -r '.content[0].text')
           echo "$code_review_suggestions" > code_suggestions.txt
 
       - name: Add Code Suggestions Comment

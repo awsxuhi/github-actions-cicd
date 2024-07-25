@@ -4,7 +4,6 @@ import json
 import decimal
 import logging
 
-#test
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
