@@ -2,6 +2,7 @@ import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dotenv from "dotenv";
 
 export class GithubActionsCicdStack extends cdk.Stack {
@@ -33,17 +34,21 @@ export class GithubActionsCicdStack extends cdk.Stack {
 
     table.grantReadWriteData(lambdaFunction);
 
-    const functionUrl = lambdaFunction.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.NONE,
-      cors: {
-        allowedOrigins: ["*"],
-        allowedMethods: [lambda.HttpMethod.ALL],
-        allowedHeaders: ["*"],
+    const api = new apigateway.RestApi(this, "GithubActionsCicd_Api", {
+      restApiName: "GithubActionsCicd_Api",
+      deployOptions: { stageName: "api" },
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
       },
+      binaryMediaTypes: ["image/*", "audio/*", "video/*", "application/pdf", "application/msword", "application/vnd.*", "multipart/form-data"],
     });
 
-    new cdk.CfnOutput(this, "Url", {
-      value: functionUrl.url,
+    // Create a root resource and add a GET method that triggers the Lambda function
+    const rootResource = api.root;
+    rootResource.addMethod("GET", new apigateway.LambdaIntegration(lambdaFunction));
+
+    new cdk.CfnOutput(this, "ApiUrl", {
+      value: api.url,
     });
   }
 }
