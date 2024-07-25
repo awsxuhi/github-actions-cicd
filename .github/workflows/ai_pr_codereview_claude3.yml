@@ -51,7 +51,7 @@ jobs:
           echo "ASCII PR Changes: $ascii_code"
 
           # Prepare the input JSON
-          input_json=$(jq -n --arg text "$ascii_code" '{"input": {"text": $text}}')
+          input_json=$(jq -n --arg text "$ascii_code" '{input: {text: $text}}')
           echo "Input JSON: $input_json"
 
           # Debugging model-id
@@ -61,7 +61,8 @@ jobs:
           aws bedrock-runtime invoke-model \
             --model-id anthropic.claude-3-sonnet-20240229-v1:0 \
             --body "$input_json" \
-            --content-type "application/json" output.json
+            --content-type "application/json" \
+            output.json
 
           # Read the response from the output file
           response=$(cat output.json)
