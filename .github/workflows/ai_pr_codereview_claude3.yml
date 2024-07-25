@@ -22,7 +22,7 @@ jobs:
         id: git-diff
         with:
           raw_diff_file_output: diff.txt
-          file_output_only: "true" #Makes us exclude printing the diff on the console for security purposes
+          file_output_only: "true" # Makes us exclude printing the diff on the console for security purposes
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -40,10 +40,12 @@ jobs:
           # Get the code changes
           changed_code=$(cat ${{steps.git-diff.outputs.raw-diff-path}})
 
-          echo "PR Changes $changed_code"
+          echo "PR Changes: $changed_code"
 
           # Escape newlines and double quotes in the changed_code
           escaped_code=$(echo "$changed_code" | jq -s -R -r @json)
+
+          echo "Escaped PR Changes: $escaped_code"
 
           # Call Claude 3 Sonnet using AWS Bedrock
           aws bedrock-runtime invoke-model \
@@ -53,8 +55,7 @@ jobs:
                 \"text\": $escaped_code
               }
             }" \
-            --content-type "application/json" \
-            output.json
+            --content-type "application/json" output.json
 
           # Read the response from the output file
           response=$(cat output.json)
