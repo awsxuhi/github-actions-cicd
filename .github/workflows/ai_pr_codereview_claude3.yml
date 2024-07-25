@@ -42,16 +42,12 @@ jobs:
           changed_code=$(cat ${{steps.git-diff.outputs.raw-diff-path}})
           echo "PR Changes: $changed_code"
 
-          # Escape newlines and double quotes in the changed_code
-          escaped_code=$(echo "$changed_code" | jq -s -R -r @json)
-          echo "Escaped PR Changes: $escaped_code"
-
-          # Replace non-ASCII characters with spaces
-          ascii_code=$(echo "$escaped_code" | iconv -c -f utf-8 -t ascii//TRANSLIT)
-          echo "ASCII PR Changes: $ascii_code"
+          # Convert the code changes to Markdown format
+          markdown_code=$(echo "$changed_code" | jq -R . | jq -s -c .)
+          echo "Markdown Code: $markdown_code"
 
           # Prepare the input JSON
-          input_json=$(jq -n --arg text "$ascii_code" '{
+          input_json=$(jq -n --arg text "$markdown_code" '{
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 1000,
             "messages": [
