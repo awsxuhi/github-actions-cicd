@@ -2,27 +2,29 @@ name: Claude3 Code Review
 
 on:
   pull_request:
+    types: [opened]
+
 permissions:
   issues: write
   pull-requests: write
-  id-token: write # This is required for requesting the JWT
-  contents: read # This is required for actions/checkout
+  id-token: write
+  contents: read
 
 jobs:
   code_review:
     runs-on: ubuntu-latest
-    environment: production # 指定环境为 production
+    environment: production
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: GrantBirki/git-diff-action@v2.4.0 # A github action for gathering the git diff of our pull request
+      - uses: GrantBirki/git-diff-action@v2.4.0
         id: git-diff
         with:
           raw_diff_file_output: diff.txt
-          file_output_only: "true" # Makes us exclude printing the diff on the console for security purposes
+          file_output_only: "true"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -39,39 +41,37 @@ jobs:
         run: |
           # Get the code changes
           changed_code=$(cat ${{steps.git-diff.outputs.raw-diff-path}})
-
           echo "PR Changes: $changed_code"
 
           # Escape newlines and double quotes in the changed_code
           escaped_code=$(echo "$changed_code" | jq -s -R -r @json)
-
           echo "Escaped PR Changes: $escaped_code"
+
+          # Replace non-ASCII characters with spaces
+          ascii_code=$(echo "$escaped_code" | iconv -c -f utf-8 -t ascii//TRANSLIT)
+          echo "ASCII PR Changes: $ascii_code"
 
           # Call Claude 3 Sonnet using AWS Bedrock
           aws bedrock-runtime invoke-model \
             --model-id arn:aws:bedrock:us-east-1::model/claude3-sonnet \
             --body "{
               \"input\": {
-                \"text\": $escaped_code
+                \"text\": $ascii_code
               }
             }" \
             --content-type "application/json" output.json
 
           # Read the response from the output file
           response=$(cat output.json)
-
           echo "This is the response $response"
 
           code_review_suggestions=$(echo "$response" | jq -r '.outputs[0].content')
-
           echo "$code_review_suggestions" > code_suggestions.txt
 
       - name: Add Code Suggestions Comment
         run: |
           cat code_suggestions.txt
-
           escaped_comments=$(echo "$(cat code_suggestions.txt)" | jq -s -R -r @json)
-
           curl -s -L \
             -X POST \
             -H "Accept: application/vnd.github+json" \
