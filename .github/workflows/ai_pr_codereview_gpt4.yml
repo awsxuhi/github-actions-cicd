@@ -2,6 +2,7 @@ name: GPT Code Review
 
 on:
   pull_request:
+    types: [opened] # Only run on pull request events, the 1st time pull request created.
 permissions:
   issues: write
   pull-requests: write
