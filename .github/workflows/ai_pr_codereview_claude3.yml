@@ -1,27 +1,29 @@
-name: GPT Code Review
+name: Claude3 Code Review
 
 on:
   pull_request:
+
 permissions:
   issues: write
   pull-requests: write
-  id-token: write # This is required for requesting the JWT
-  contents: read # This is required for actions/checkout
+  id-token: write
+  contents: read
 
 jobs:
   code_review:
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: GrantBirki/git-diff-action@v2.4.0 # A github action for gathering the git diff of our pull request
+      - uses: GrantBirki/git-diff-action@v2.4.0
         id: git-diff
         with:
           raw_diff_file_output: diff.txt
-          file_output_only: "true" #Makes us exclude printing the diff on the console for security purposes
+          file_output_only: "true"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -38,34 +40,52 @@ jobs:
         run: |
           # Get the code changes
           changed_code=$(cat ${{steps.git-diff.outputs.raw-diff-path}})
+          echo "PR Changes: $changed_code"
 
-          echo "PR Changes $changed_code"
+          # Convert the code changes to Markdown format
+          markdown_code=$(echo "$changed_code" | jq -R . | jq -s -c .)
+          echo "Markdown Code: $markdown_code"
 
-          # Escape newlines and double quotes in the changed_code
-          escaped_code=$(echo "$changed_code" | jq -s -R -r @json)
+          # Prepare the input JSON
+          input_json=$(jq -n --arg text "$markdown_code" '{
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": 1000,
+            "messages": [
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": $text
+                  }
+                ]
+              }
+            ]
+          }')
+          echo "Input JSON: $input_json"
+
+          # Debugging model-id
+          echo "Using model-id: anthropic.claude-3-sonnet-20240229-v1:0"
 
           # Call Claude 3 Sonnet using AWS Bedrock
-          response=$(aws bedrock-runtime invoke-model \
-            --model-id arn:aws:bedrock:us-east-1::model/claude3-sonnet \
-            --body "{
-              \"input\": {
-                \"text\": $escaped_code
-              }
-            }" \
-            --content-type "application/json")
+          aws bedrock-runtime invoke-model \
+            --model-id anthropic.claude-3-sonnet-20240229-v1:0 \
+            --content-type "application/json" \
+            --accept "application/json" \
+            --body "$input_json" \
+            output.json
 
+          # Read the response from the output file
+          response=$(cat output.json)
           echo "This is the response $response"
 
-          code_review_suggestions=$(echo "$response" | jq -r '.outputs[0].content')
-
+          code_review_suggestions=$(echo "$response" | jq -r '.content[0].text')
           echo "$code_review_suggestions" > code_suggestions.txt
 
       - name: Add Code Suggestions Comment
         run: |
           cat code_suggestions.txt
-
           escaped_comments=$(echo "$(cat code_suggestions.txt)" | jq -s -R -r @json)
-
           curl -s -L \
             -X POST \
             -H "Accept: application/vnd.github+json" \
