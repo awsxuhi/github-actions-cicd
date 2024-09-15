@@ -1,7 +1,8 @@
 name: Claude3 Code Review Version 2
 
 on:
-  pull_request:
+  # pull_request:
+  workflow_dispatch:
 
 permissions:
   issues: write
