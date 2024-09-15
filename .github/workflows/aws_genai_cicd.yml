@@ -9,6 +9,9 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
+env:
+  AWS_REGION: us-east-1
+
 jobs:
   review:
     runs-on: ubuntu-latest
@@ -57,7 +60,8 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           # using repository secret to get the role arn
-          aws-region: ${{ vars.AWS_REGION }}
+          # aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           role-session-name: gha-session-${{ github.run_id }}-${{ github.job }}
           role-duration-seconds: 3600
