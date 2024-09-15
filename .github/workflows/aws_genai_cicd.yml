@@ -31,11 +31,17 @@ jobs:
         run: npm ci
         shell: bash
 
-      # check if required dependencies @actions/core and @actions/github are installed
-      - name: Check if required dependencies are installed
+      # # check if required dependencies @actions/core and @actions/github are installed
+      # - name: Check if required dependencies are installed
+      #   run: |
+      #     npm list @actions/core
+      #     npm list @actions/github
+      #   shell: bash
+
+      - name: Install required dependencies if not present
         run: |
-          npm list @actions/core
-          npm list @actions/github
+          npm list @actions/core || npm install @actions/core
+          npm list @actions/github || npm install @actions/github
         shell: bash
 
       - name: Debug GitHub Token
