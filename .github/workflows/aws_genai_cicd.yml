@@ -71,7 +71,8 @@ jobs:
         run: aws sts get-caller-identity
 
       - name: Intelligent GitHub Actions
-        uses: yike5460/intelli-ops@v0.0.78
+        # uses: yike5460/intelli-ops@v0.0.78
+        uses: ./.github/actions/aws-genai-cicd
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

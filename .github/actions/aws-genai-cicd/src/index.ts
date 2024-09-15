@@ -1,13 +1,13 @@
-import * as core from '@actions/core';
-import { getOctokit, context } from '@actions/github';
+import * as core from "@actions/core";
+import { getOctokit, context } from "@actions/github";
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
-import * as fs from 'fs';
-import * as path from 'path';
-import { setTimeout } from 'timers/promises';
+import * as fs from "fs";
+import * as path from "path";
+import { setTimeout } from "timers/promises";
 
 // current we support typescript and python, while the python library is not available yet, we will use typescript as the default language
 // using abosolute path to import the functions from ut_ts.ts
-import { generateUnitTests, runUnitTests, generateTestReport } from '@/src/ut_ts';
+import { generateUnitTests, runUnitTests, generateTestReport } from "@/ut_ts";
 
 interface PullRequest {
   number: number;
@@ -31,30 +31,30 @@ interface PullFile {
 }
 
 // Define the LanguageCode type
-type LanguageCode = 'en' | 'zh' | 'ja' | 'es' | 'fr' | 'de' | 'it';
+type LanguageCode = "en" | "zh" | "ja" | "es" | "fr" | "de" | "it";
 
 // Update the languageCodeToName object with the correct type
 const languageCodeToName: Record<LanguageCode, string> = {
-  'en': 'English',
-  'zh': 'Chinese',
-  'ja': 'Japanese',
-  'es': 'Spanish',
-  'fr': 'French',
-  'de': 'German',
-  'it': 'Italian',
+  en: "English",
+  zh: "Chinese",
+  ja: "Japanese",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  it: "Italian",
 };
 
 // This function splits the content into chunks of maxChunkSize
 function splitContentIntoChunks_deprecated(content: string, maxChunkSize: number): string[] {
   const chunks: string[] = [];
-  let currentChunk = '';
+  let currentChunk = "";
 
-  content.split('\n').forEach(line => {
+  content.split("\n").forEach((line) => {
     if (currentChunk.length + line.length > maxChunkSize) {
       chunks.push(currentChunk);
-      currentChunk = '';
+      currentChunk = "";
     }
-    currentChunk += line + '\n';
+    currentChunk += line + "\n";
   });
 
   if (currentChunk) {
@@ -65,14 +65,13 @@ function splitContentIntoChunks_deprecated(content: string, maxChunkSize: number
 }
 
 function shouldExcludeFile(filename: string, excludePatterns: string[]): boolean {
-  return excludePatterns.some(pattern => {
-    const regex = new RegExp(`^${pattern.replace(/\*/g, '.*')}$`);
+  return excludePatterns.some((pattern) => {
+    const regex = new RegExp(`^${pattern.replace(/\*/g, ".*")}$`);
     return regex.test(filename);
   });
 }
 
-const pr_generation_prompt =
-`
+const pr_generation_prompt = `
 <task context>
 You are a developer tasked with creating a pull request (PR) for a software project. Your primary goal is to provide a clear and informative description of the changes you are proposing.
 </task context>
@@ -110,17 +109,17 @@ Provide your PR description in the following format:
 </output_format>
 `;
 
-let statsSummary: {file: string, added: number, removed: number}[] = [];
+let statsSummary: { file: string; added: number; removed: number }[] = [];
 
-function calculateFilePatchNumLines(fileChange: string): { added: number, removed: number } {
-  const lines = fileChange.split('\n');
+function calculateFilePatchNumLines(fileChange: string): { added: number; removed: number } {
+  const lines = fileChange.split("\n");
   let added = 0;
   let removed = 0;
 
-  lines.forEach(line => {
-    if (line.startsWith('+')) {
+  lines.forEach((line) => {
+    if (line.startsWith("+")) {
       added++;
-    } else if (line.startsWith('-')) {
+    } else if (line.startsWith("-")) {
       removed++;
     }
   });
@@ -129,7 +128,6 @@ function calculateFilePatchNumLines(fileChange: string): { added: number, remove
 }
 
 export async function generatePRDescription(client: BedrockRuntimeClient, modelId: string, octokit: ReturnType<typeof getOctokit>): Promise<void> {
-
   const pullRequest = context.payload.pull_request as PullRequest;
   const repo = context.repo;
 
@@ -139,51 +137,50 @@ export async function generatePRDescription(client: BedrockRuntimeClient, modelI
     pull_number: pullRequest.number,
   });
 
-  const fileNameAndStatus = await Promise.all(files.map(async (file) => {
-    try {
-      if (file.status === 'removed') {
-        const { added, removed } = calculateFilePatchNumLines(file.patch as string);
-        statsSummary.push({file: file.filename, added: 0, removed: removed});
-        return `${file.filename}: removed`;
-      } else {
-        const { data: content } = await octokit.rest.repos.getContent({
-          ...repo,
-          path: file.filename,
-          ref: pullRequest.head.sha,
-        });
-        const { added, removed } = calculateFilePatchNumLines(file.patch as string);
-        statsSummary.push({file: file.filename, added: added, removed: removed});
-        return `${file.filename}: ${file.status}`;
+  const fileNameAndStatus = await Promise.all(
+    files.map(async (file) => {
+      try {
+        if (file.status === "removed") {
+          const { added, removed } = calculateFilePatchNumLines(file.patch as string);
+          statsSummary.push({ file: file.filename, added: 0, removed: removed });
+          return `${file.filename}: removed`;
+        } else {
+          const { data: content } = await octokit.rest.repos.getContent({
+            ...repo,
+            path: file.filename,
+            ref: pullRequest.head.sha,
+          });
+          const { added, removed } = calculateFilePatchNumLines(file.patch as string);
+          statsSummary.push({ file: file.filename, added: added, removed: removed });
+          return `${file.filename}: ${file.status}`;
+        }
+      } catch (error) {
+        if ((error as any).status === 404) {
+          console.log(`File ${file.filename} not found in the repository`);
+          return `${file.filename}: not found`;
+        }
+        return `${file.filename}: error`;
       }
-    } catch (error) {
-      if ((error as any).status === 404) {
-        console.log(`File ${file.filename} not found in the repository`);
-        return `${file.filename}: not found`;
-      }
-      return `${file.filename}: error`;
-    }
-  }));
+    })
+  );
 
-  const prDescriptionTemplate = pr_generation_prompt.replace('[Insert the code change to be referenced in the PR description]', fileNameAndStatus.join('\n'));
+  const prDescriptionTemplate = pr_generation_prompt.replace("[Insert the code change to be referenced in the PR description]", fileNameAndStatus.join("\n"));
 
   // invoke model to generate complete PR description
   const payloadInput = prDescriptionTemplate;
   const prDescription = await invokeModel(client, modelId, payloadInput);
 
-  const fixedDescription =
-  `
+  const fixedDescription = `
 
 ## File Stats Summary
 The file changes summary is as follows:
 - File number involved in this PR: {{FILE_NUMBER}}
 - File changes summary:
 {{FILE_CHANGE_SUMMARY}}
-  `
-  const fileChangeSummary = statsSummary.map(file => `${file.file}: ${file.added} added, ${file.removed} removed`).join('\n');
+  `;
+  const fileChangeSummary = statsSummary.map((file) => `${file.file}: ${file.added} added, ${file.removed} removed`).join("\n");
   const fileNumber = statsSummary.length.toString();
-  const updatedDescription = fixedDescription
-    .replace('{{FILE_CHANGE_SUMMARY}}', fileChangeSummary)
-    .replace('{{FILE_NUMBER}}', fileNumber);
+  const updatedDescription = fixedDescription.replace("{{FILE_CHANGE_SUMMARY}}", fileChangeSummary).replace("{{FILE_NUMBER}}", fileNumber);
 
   // append fixed template content to the generated PR description
   const prDescriptionWithStats = prDescription + updatedDescription;
@@ -193,26 +190,26 @@ The file changes summary is as follows:
     pull_number: pullRequest.number,
     body: prDescriptionWithStats,
   });
-  console.log('PR description updated successfully.');
+  console.log("PR description updated successfully.");
 }
 
 function splitIntoSoloFile(combinedCode: string): Record<string, string> {
   // split the whole combinedCode content into individual files (index.ts, index_test.ts, index.js) by recognize the character like: "// File: ./index.ts", filter the content with suffix ".tx" and not contain "test" in file name (index.ts),
   const fileChunks: Record<string, string> = {};
   const filePattern = /\/\/ File: \.\/(.+)/;
-  let currentFile = '';
-  let currentContent = '';
+  let currentFile = "";
+  let currentContent = "";
 
-  combinedCode.split('\n').forEach(line => {
+  combinedCode.split("\n").forEach((line) => {
     const match = line.match(filePattern);
     if (match) {
       if (currentFile) {
         fileChunks[currentFile] = currentContent.trim();
       }
       currentFile = match[1] as string;
-      currentContent = '';
+      currentContent = "";
     } else {
-      currentContent += line + '\n';
+      currentContent += line + "\n";
     }
   });
 
@@ -229,13 +226,19 @@ async function extractFunctions(content: string): Promise<string[]> {
 
   // Dummy response for debugging purposes
   return [
-    'export async function generateUnitTests(client: BedrockRuntimeClient, modelId: string, sourceCode: string): Promise<TestCase[]> { ... }',
-    'async function runUnitTests(testCases: TestCase[], sourceCode: string): Promise<void> { ... }',
-    'function generateTestReport(testCases: TestCase[]): Promise<void> { ... }',
+    "export async function generateUnitTests(client: BedrockRuntimeClient, modelId: string, sourceCode: string): Promise<TestCase[]> { ... }",
+    "async function runUnitTests(testCases: TestCase[], sourceCode: string): Promise<void> { ... }",
+    "function generateTestReport(testCases: TestCase[]): Promise<void> { ... }",
   ];
 }
 
-export async function generateUnitTestsSuite(client: BedrockRuntimeClient, modelId: string, octokit: ReturnType<typeof getOctokit>, repo: { owner: string, repo: string }, unitTestSourceFolder: string): Promise<void> {
+export async function generateUnitTestsSuite(
+  client: BedrockRuntimeClient,
+  modelId: string,
+  octokit: ReturnType<typeof getOctokit>,
+  repo: { owner: string; repo: string },
+  unitTestSourceFolder: string
+): Promise<void> {
   const pullRequest = context.payload.pull_request as PullRequest;
   const branchName = pullRequest.head.ref;
   let allTestCases: any[] = [];
@@ -245,7 +248,7 @@ export async function generateUnitTestsSuite(client: BedrockRuntimeClient, model
     ...repo,
     per_page: 100,
   });
-  const baselineTagExists = tags.some(tag => tag.name === 'auto-unit-test-baseline');
+  const baselineTagExists = tags.some((tag) => tag.name === "auto-unit-test-baseline");
 
   if (!baselineTagExists) {
     // Generate tests for all .ts files in the specified folder
@@ -256,13 +259,13 @@ export async function generateUnitTestsSuite(client: BedrockRuntimeClient, model
 
     if (Array.isArray(files)) {
       for (const file of files) {
-        if (file.type === 'file') {
+        if (file.type === "file") {
           const { data: content } = await octokit.rest.repos.getContent({
             ...repo,
             path: file.path,
           });
-          if ('content' in content && typeof content.content === 'string') {
-            const decodedContent = Buffer.from(content.content, 'base64').toString('utf8');
+          if ("content" in content && typeof content.content === "string") {
+            const decodedContent = Buffer.from(content.content, "base64").toString("utf8");
             const testCases = await generateUnitTests(client, modelId, decodedContent);
             allTestCases = allTestCases.concat(testCases);
           }
@@ -274,13 +277,13 @@ export async function generateUnitTestsSuite(client: BedrockRuntimeClient, model
     try {
       await octokit.rest.git.createRef({
         ...repo,
-        ref: 'refs/tags/auto-unit-test-baseline',
+        ref: "refs/tags/auto-unit-test-baseline",
         sha: pullRequest.head.sha,
       });
-      console.log('Tag created successfully');
+      console.log("Tag created successfully");
       await setTimeout(5000); // Wait for 5 seconds
     } catch (error) {
-      console.error('Failed to create tag:', error);
+      console.error("Failed to create tag:", error);
     }
   } else {
     // Generate tests only for files changed in the PR
@@ -296,8 +299,8 @@ export async function generateUnitTestsSuite(client: BedrockRuntimeClient, model
           path: file.filename,
           ref: pullRequest.head.sha,
         });
-        if ('content' in content && typeof content.content === 'string') {
-          const decodedContent = Buffer.from(content.content, 'base64').toString('utf8');
+        if ("content" in content && typeof content.content === "string") {
+          const decodedContent = Buffer.from(content.content, "base64").toString("utf8");
           const testCases = await generateUnitTests(client, modelId, decodedContent);
           allTestCases = allTestCases.concat(testCases);
         }
@@ -306,27 +309,27 @@ export async function generateUnitTestsSuite(client: BedrockRuntimeClient, model
   }
 
   if (allTestCases.length === 0) {
-    console.warn('No test cases generated. Skipping unit tests execution and report generation.');
+    console.warn("No test cases generated. Skipping unit tests execution and report generation.");
     return;
   }
 
-  const sourceFilePath = path.join(__dirname, '..', 'src', 'index.ts'); // Adjust this path if needed
-  const sourceCode = fs.readFileSync(sourceFilePath, 'utf-8');
+  const sourceFilePath = path.join(__dirname, "..", "src", "index.ts"); // Adjust this path if needed
+  const sourceCode = fs.readFileSync(sourceFilePath, "utf-8");
 
   await runUnitTests(allTestCases, sourceCode);
   await generateTestReport(allTestCases);
-  console.log('Unit tests and report generated successfully.');
+  console.log("Unit tests and report generated successfully.");
 
   // Add the generated unit tests to existing PR
   if (pullRequest) {
     try {
       if (!branchName) {
-        throw new Error('Unable to determine the branch name');
+        throw new Error("Unable to determine the branch name");
       }
 
       // Create a new file with the generated unit tests in test folder
-      const unitTestsContent = allTestCases.map(tc => tc.code).join('\n\n');
-      const unitTestsFileName = 'test/unit_tests.ts';
+      const unitTestsContent = allTestCases.map((tc) => tc.code).join("\n\n");
+      const unitTestsFileName = "test/unit_tests.ts";
 
       // Check if the file already exists
       let fileSha: string | undefined;
@@ -336,7 +339,7 @@ export async function generateUnitTestsSuite(client: BedrockRuntimeClient, model
           path: unitTestsFileName,
           ref: branchName,
         });
-        if ('sha' in existingFile) {
+        if ("sha" in existingFile) {
           fileSha = existingFile.sha;
         }
       } catch (error) {
@@ -347,22 +350,20 @@ export async function generateUnitTestsSuite(client: BedrockRuntimeClient, model
       await octokit.rest.repos.createOrUpdateFileContents({
         ...repo,
         path: unitTestsFileName,
-        message: 'Add or update generated unit tests',
-        content: Buffer.from(unitTestsContent).toString('base64'),
+        message: "Add or update generated unit tests",
+        content: Buffer.from(unitTestsContent).toString("base64"),
         branch: branchName,
         sha: fileSha, // Include the sha if the file exists, undefined otherwise
       });
-
     } catch (error) {
-      console.error('Error occurred while pushing the changes to the PR branch', error);
+      console.error("Error occurred while pushing the changes to the PR branch", error);
       throw error;
     }
   }
 }
 
 // Refer to https://google.github.io/eng-practices/review/reviewer/looking-for.html and https://google.github.io/eng-practices/review/reviewer/standard.html
-const detailed_review_prompt = 
-`<task_context>
+const detailed_review_prompt = `<task_context>
 You are an expert code reviewer tasked with reviewing a code change (CL) for a software project. Your primary goal is to ensure that the overall code health of the system is improving while allowing developers to make progress. Your feedback should be constructive, educational, and focused on the most important issues.
 </task_context>
 
@@ -418,8 +419,7 @@ Suggestions:
 List any minor suggestions, optional to include
 `;
 
-const concise_review_prompt =
-`<task_context>
+const concise_review_prompt = `<task_context>
 You are an expert code reviewer tasked with reviewing a code change (CL) for a software project. Your primary goal is to ensure that the overall code health of the system is improving while allowing developers to make progress. Your feedback should be constructive, educational, and focused on the most important issues.
 </task_context>
 
@@ -482,9 +482,9 @@ export async function invokeModel(client: BedrockRuntimeClient, modelId: string,
       };
 
       const response = await fetch(`https://${endpoint}`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
       });
@@ -502,10 +502,12 @@ export async function invokeModel(client: BedrockRuntimeClient, modelId: string,
       messages: [
         {
           role: "user",
-          content: [{
-            type: "text",
-            text: payloadInput,
-          }],
+          content: [
+            {
+              type: "text",
+              text: payloadInput,
+            },
+          ],
         },
       ],
     };
@@ -524,13 +526,19 @@ export async function invokeModel(client: BedrockRuntimeClient, modelId: string,
 
     return finalResult;
   } catch (error) {
-    console.error('Error occurred while invoking the model', error);
+    console.error("Error occurred while invoking the model", error);
     throw error;
   }
 }
 
-export async function generateCodeReviewComment(bedrockClient: BedrockRuntimeClient, modelId: string, octokit: ReturnType<typeof getOctokit>, excludePatterns: string[], reviewLevel: string, outputLanguage: string): Promise<void> {
-
+export async function generateCodeReviewComment(
+  bedrockClient: BedrockRuntimeClient,
+  modelId: string,
+  octokit: ReturnType<typeof getOctokit>,
+  excludePatterns: string[],
+  reviewLevel: string,
+  outputLanguage: string
+): Promise<void> {
   const pullRequest = context.payload.pull_request as PullRequest;
   const repo = context.repo;
 
@@ -556,42 +564,39 @@ export async function generateCodeReviewComment(bedrockClient: BedrockRuntimeCli
     // @@ is the hunk header that shows where the changes are and how many lines are changed. In this case, it indicates that the changes start at line 1 of the old file and affect 3 lines, and start at line 1 of the new file and affect 2 lines.
 
     // console.log(`File patch content: ${file.patch} for file: ${file.filename}`);
-    if (file.status !== 'removed' && file.patch && !shouldExcludeFile(file.filename, excludePatterns)) {
-
+    if (file.status !== "removed" && file.patch && !shouldExcludeFile(file.filename, excludePatterns)) {
       // Split the patch into hunks
       const hunks = file.patch.split(/^@@\s+-\d+,\d+\s+\+\d+,\d+\s+@@/m);
       let totalPosition = 0;
 
       for (const [hunkIndex, hunk] of hunks.entries()) {
         if (hunkIndex === 0) continue; // Skip the first element (it's empty due to the split)
-        const hunkLines = hunk.split('\n').slice(1); // Remove the hunk header
-        const changedLines = hunkLines
-          .filter(line => line.startsWith('+') && !line.startsWith('+++'))
-          .map(line => line.substring(1));
+        const hunkLines = hunk.split("\n").slice(1); // Remove the hunk header
+        const changedLines = hunkLines.filter((line) => line.startsWith("+") && !line.startsWith("+++")).map((line) => line.substring(1));
         // console.log(`  Hunk ${hunkIndex} content: ${hunk} with changed lines: ${changedLines}`);
 
         if (changedLines.length === 0) continue;
 
-        const fileContent = changedLines.join('\n');
+        const fileContent = changedLines.join("\n");
 
         // two options for review level: detailed and concise
-        const promptTemplate = reviewLevel === 'detailed' ? detailed_review_prompt : concise_review_prompt;
-        let formattedContent = promptTemplate.replace('{{CODE_SNIPPET}}', fileContent);
+        const promptTemplate = reviewLevel === "detailed" ? detailed_review_prompt : concise_review_prompt;
+        let formattedContent = promptTemplate.replace("{{CODE_SNIPPET}}", fileContent);
 
         // get the actual language name from the language code
-        const languageName = languageCodeToName[outputLanguage as LanguageCode] || 'English'; // Default to English if the language code is not found
+        const languageName = languageCodeToName[outputLanguage as LanguageCode] || "English"; // Default to English if the language code is not found
         if (!(outputLanguage in languageCodeToName)) {
           core.warning(`Unsupported output language: ${outputLanguage}. Defaulting to English.`);
         }
-        formattedContent = formattedContent.replace('{{LANGUAGE_NAME}}', languageName);
+        formattedContent = formattedContent.replace("{{LANGUAGE_NAME}}", languageName);
 
         // invoke model to generate review comments
-        var review = await invokeModel(bedrockClient, modelId, formattedContent);  
+        var review = await invokeModel(bedrockClient, modelId, formattedContent);
 
         // log the generated review comments and check if it is empty
         // console.log(`Review comments ${review} generated for file: ${file.filename} in hunk ${hunkIndex} with file content: ${fileContent}`);
 
-        if (!review || review.trim() == '') {
+        if (!review || review.trim() == "") {
           console.warn(`No review comments generated for hunk ${hunkIndex} in file ${file.filename}, skipping`);
           continue;
         }
@@ -599,9 +604,9 @@ export async function generateCodeReviewComment(bedrockClient: BedrockRuntimeCli
         // Calculate the position for this hunk
         let hunkPosition = totalPosition + 1;
         for (const line of hunkLines) {
-          if (line.startsWith('+') && !line.startsWith('+++')) {
+          if (line.startsWith("+") && !line.startsWith("+++")) {
             // Check if the added line is a comment or actual code
-            if (!line.trim().startsWith('//') && !line.trim().startsWith('/*')) {
+            if (!line.trim().startsWith("//") && !line.trim().startsWith("/*")) {
               console.log(`Review comments ${review} generated for file: ${file.filename} with position: ${hunkPosition}`);
               reviewComments.push({
                 path: file.filename,
@@ -611,7 +616,7 @@ export async function generateCodeReviewComment(bedrockClient: BedrockRuntimeCli
               break;
             }
           }
-          if (!line.startsWith('-')) {
+          if (!line.startsWith("-")) {
             hunkPosition++;
           }
         }
@@ -630,57 +635,57 @@ export async function generateCodeReviewComment(bedrockClient: BedrockRuntimeCli
         ...repo,
         pull_number: pullRequest.number,
         commit_id: pullRequest.head.sha,
-        body: 'Code review comments',
-        event: 'COMMENT',
+        body: "Code review comments",
+        event: "COMMENT",
         comments: reviewComments,
         headers: {
-          'X-GitHub-Api-Version': '2022-11-28'
-        }
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
       });
-      console.log('Code review comments posted successfully.');
+      console.log("Code review comments posted successfully.");
     } catch (error) {
-      console.error('Error posting code review comments:', error);
+      console.error("Error posting code review comments:", error);
       throw error;
     }
   } else {
-    console.log('No review comments to post.');
+    console.log("No review comments to post.");
   }
 }
 
 async function run(): Promise<void> {
   try {
-    const githubToken = core.getInput('github-token');
-    const awsRegion = core.getInput('aws-region');
-    const modelId = core.getInput('model-id');
-    const excludeFiles = core.getInput('generate-code-review-exclude-files');
-    const reviewLevel = core.getInput('generate-code-review-level');
-    const generateCodeReview = core.getInput('generate-code-review');
-    const generatePrDescription = core.getInput('generate-pr-description');
-    const generateUnitTest = core.getInput('generate-unit-test');
-    const outputLanguage = core.getInput('output-language');
-    const unitTestSourceFolder = core.getInput('generate-code-review-source-folder');
+    const githubToken = core.getInput("github-token");
+    const awsRegion = core.getInput("aws-region");
+    const modelId = core.getInput("model-id");
+    const excludeFiles = core.getInput("generate-code-review-exclude-files");
+    const reviewLevel = core.getInput("generate-code-review-level");
+    const generateCodeReview = core.getInput("generate-code-review");
+    const generatePrDescription = core.getInput("generate-pr-description");
+    const generateUnitTest = core.getInput("generate-unit-test");
+    const outputLanguage = core.getInput("output-language");
+    const unitTestSourceFolder = core.getInput("generate-code-review-source-folder");
 
-    const excludePatterns = excludeFiles ? excludeFiles.split(',').map(p => p.trim()) : [];
+    const excludePatterns = excludeFiles ? excludeFiles.split(",").map((p) => p.trim()) : [];
 
-    console.log(`GitHub Token: ${githubToken ? 'Token is set' : 'Token is not set'}`);
+    console.log(`GitHub Token: ${githubToken ? "Token is set" : "Token is not set"}`);
     console.log(`AWS Region: ${awsRegion}`);
     console.log(`Model ID: ${modelId}`);
     console.log(`Excluded files: ${excludeFiles}`);
     console.log(`Code review: ${generateCodeReview}`);
     console.log(`Output language: ${outputLanguage}`);
     console.log(`Review level: ${reviewLevel}`);
-    console.log(`Generate PR description: ${generatePrDescription.toLowerCase() === 'true' ? 'true' : 'false'}`);
-    console.log(`Generate unit test suite: ${generateUnitTest.toLowerCase() === 'true' ? 'true' : 'false'}`);
+    console.log(`Generate PR description: ${generatePrDescription.toLowerCase() === "true" ? "true" : "false"}`);
+    console.log(`Generate unit test suite: ${generateUnitTest.toLowerCase() === "true" ? "true" : "false"}`);
     console.log(`Test folder path: ${unitTestSourceFolder}`);
     if (!githubToken) {
-      throw new Error('GitHub token is not set');
+      throw new Error("GitHub token is not set");
     }
 
-    const bedrockClient = new BedrockRuntimeClient({ region: awsRegion || 'us-east-1' });
+    const bedrockClient = new BedrockRuntimeClient({ region: awsRegion || "us-east-1" });
     const octokit = getOctokit(githubToken);
 
     if (!context.payload.pull_request) {
-      console.log('No pull request found in the context. This action should be run only on pull request events.');
+      console.log("No pull request found in the context. This action should be run only on pull request events.");
       return;
     }
 
@@ -690,33 +695,32 @@ async function run(): Promise<void> {
     console.log(`Reviewing PR #${pullRequest.number} in ${repo.owner}/${repo.repo}`);
 
     // branch to generate PR description
-    if (generatePrDescription.toLowerCase() === 'true') {
+    if (generatePrDescription.toLowerCase() === "true") {
       await generatePRDescription(bedrockClient, modelId, octokit);
     }
 
     // branch to generate unit tests suite
-    if (generateUnitTest.toLowerCase() === 'true') {
+    if (generateUnitTest.toLowerCase() === "true") {
       if (!unitTestSourceFolder) {
-        throw new Error('Test folder path is not specified');
+        throw new Error("Test folder path is not specified");
       }
       await generateUnitTestsSuite(bedrockClient, modelId, octokit, repo, unitTestSourceFolder);
     }
 
     // branch to generate code review comments
-    if (generateCodeReview.toLowerCase() === 'true') {
+    if (generateCodeReview.toLowerCase() === "true") {
       // Wait for a fixed amount of time (e.g., 5 seconds)
       // const delayMs = 5000; // 5 seconds
       // console.log(`Waiting ${delayMs}ms for GitHub to process the changes...`);
       // await new Promise(resolve => setTimeout(resolve, delayMs));
       await generateCodeReviewComment(bedrockClient, modelId, octokit, excludePatterns, reviewLevel, outputLanguage);
     }
-
   } catch (error) {
     if (error instanceof Error) {
       core.setFailed(`Error: ${error.message}`);
-      console.error('Stack trace:', error.stack);
+      console.error("Stack trace:", error.stack);
     } else {
-      core.setFailed('An unknown error occurred');
+      core.setFailed("An unknown error occurred");
     }
   }
 }
