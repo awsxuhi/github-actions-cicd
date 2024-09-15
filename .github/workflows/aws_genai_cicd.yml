@@ -47,9 +47,9 @@ jobs:
       - name: Debug GitHub Token
         run: |
           if [ -n "${{ secrets.GITHUB_TOKEN }}" ]; then
-            echo "GitHub Token is set"
+            echo "GitHub Token was set successfully!"
           else
-            echo "GitHub Token is not set"
+            echo "GitHub Token has not yet been set!"
           fi
 
       # assume the specified IAM role and set up the AWS credentials for use in subsequent steps.
@@ -57,8 +57,10 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           # using repository secret to get the role arn
+          aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: us-east-1
+          role-session-name: gha-session
+          role-duration-seconds: 3600
 
       - name: Get AWS credentials (Optional Step)
         run: aws sts get-caller-identity
