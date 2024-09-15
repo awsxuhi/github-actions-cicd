@@ -15,6 +15,7 @@ env:
 jobs:
   review:
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       id-token: write # read repository contents and write pull request comments
       contents: write # allow github action bot to push new content into existing pull requests
