@@ -59,7 +59,7 @@ jobs:
           # using repository secret to get the role arn
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: gha-session
+          role-session-name: gha-session-${{ github.run_id }}-${{ github.job }}
           role-duration-seconds: 3600
 
       - name: Get AWS credentials (Optional Step)
