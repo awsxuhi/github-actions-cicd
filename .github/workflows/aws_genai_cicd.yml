@@ -71,6 +71,8 @@ jobs:
 
       - name: Intelligent GitHub Actions
         uses: yike5460/intelli-ops@v0.0.78
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           # Automatic Provision: The GITHUB_TOKEN is automatically created and provided by GitHub for each workflow run. You don't need to manually create or store this token as a secret.
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -83,5 +85,3 @@ jobs:
           generate-unit-test: "true"
           generate-code-review-source-folder: "src"
           # output-language: 'zh'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
