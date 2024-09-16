@@ -13,7 +13,7 @@ env:
   AWS_REGION: us-east-1
 
 jobs:
-  review:
+  codereview_and_unit_test:
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -27,17 +27,25 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "20.x"
+          cache: "npm"
+      # When using `cache: "npm"`, there is no need to manually configure caching with actions/cache@v4 as shown below:
+      # - name: Cache dependencies
+      #   id: cache
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: node_modules
+      #     key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
 
-      # 在 .github/actions/aws-genai-cicd 目录中安装依赖
+      # Install dependencies in .github/actions/aws-genai-cicd to ensure your custom action takes effect.
       - name: Install dependencies
         run: npm install
         shell: bash
         working-directory: .github/actions/aws-genai-cicd
 
-      # 在 .github/actions/aws-genai-cicd 目录中构建项目
+      # Generate dist/index.js in .github/actions/aws-genai-cicd by executing `npm run build`.
       - name: Build project
         run: npm run build
         shell: bash
@@ -51,20 +59,20 @@ jobs:
             echo "GitHub Token has not yet been set!"
           fi
 
-      # assume the specified IAM role and set up the AWS credentials for use in subsequent steps.
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          # role-session-name: gha-session-${{ github.run_id }}-${{ github.job }}
-          role-session-name: gha-session
+          role-session-name: gha-session-${{ github.workflow.replace(' ', '_') }}-${{ github.job }}-${{ github.run_id }}
           role-duration-seconds: 3600
+          # `role-session-name` is an optional field used to specify a unique name for a role session. By assigning a unique `role-session-name` to each role session, you can more easily track and audit operations in AWS Cloud. This is particularly useful when reviewing CloudTrail logs, as it allows you to identify different sessions and their related activities based on the `role-session-name`.
+          # role-session-name example: gha-session-10871592797-review, you can also simply using gha-session as the name. Don't worry about 2 concurrent runs having the same role-session-name.
 
       - name: Get AWS credentials (Optional Step)
         run: aws sts get-caller-identity
 
-      - name: Intelligent GitHub Actions
+      - name: Leveraging Bedrock/Claude to generate PR description, do code review and/or generate unit tests
         uses: ./.github/actions/aws-genai-cicd
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
