@@ -20,5 +20,5 @@
     "typeRoots": ["./node_modules/@types"],
     "outDir": "./typescript_output" // 添加此行，指定编译后的输出目录
   },
-  "exclude": ["node_modules", "cdk.out"]
+  "exclude": ["**/cdk.out", "**/node_modules", "**/build", "**/dist", "**/test", "**/__tests__", "**/*.test.ts"]
 }

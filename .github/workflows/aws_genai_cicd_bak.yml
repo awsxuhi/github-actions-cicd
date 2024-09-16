@@ -1,0 +1,89 @@
+name: AWS GenAI CICD Workflow
+
+on:
+  workflow_dispatch:
+  # pull_request:
+  #   types: [opened, synchronize]
+
+# Avoid running the same workflow on the same branch concurrently
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write # read repository contents and write pull request comments
+      contents: write # allow github action bot to push new content into existing pull requests
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+        shell: bash
+
+      # # check if required dependencies @actions/core and @actions/github are installed
+      # - name: Check if required dependencies are installed
+      #   run: |
+      #     npm list @actions/core
+      #     npm list @actions/github
+      #   shell: bash
+
+      - name: Install required dependencies if not present
+        run: |
+          npm list @actions/core || npm install @actions/core
+          npm list @actions/github || npm install @actions/github
+        shell: bash
+
+      - name: Debug GitHub Token
+        run: |
+          if [ -n "${{ secrets.GITHUB_TOKEN }}" ]; then
+            echo "GitHub Token was set successfully!"
+          else
+            echo "GitHub Token has not yet been set!"
+          fi
+
+      # assume the specified IAM role and set up the AWS credentials for use in subsequent steps.
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # using repository secret to get the role arn
+          # aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: gha-session-${{ github.run_id }}-${{ github.job }}
+          role-duration-seconds: 3600
+
+      - name: Get AWS credentials (Optional Step)
+        run: aws sts get-caller-identity
+
+      - name: Intelligent GitHub Actions
+        # uses: yike5460/intelli-ops@v0.0.78
+        uses: ./.github/actions/aws-genai-cicd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Automatic Provision: The GITHUB_TOKEN is automatically created and provided by GitHub for each workflow run. You don't need to manually create or store this token as a secret.
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          aws-region: us-east-1
+          model-id: anthropic.claude-3-sonnet-20240229-v1:0
+          generate-code-review: "true"
+          generate-code-review-level: "detailed"
+          generate-code-review-exclude-files: "*.md,*.json"
+          generate-pr-description: "true"
+          generate-unit-test: "true"
+          generate-code-review-source-folder: "src"
+          # output-language: 'zh'

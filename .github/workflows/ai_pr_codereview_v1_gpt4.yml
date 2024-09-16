@@ -1,7 +1,14 @@
-name: GPT Code Review
+# Code Review Version 1 - GPT4
+#
+# This version first uses `GrantBirki/git-diff-action@v2.4.0` to get the code differences,
+# then calls openai/gpt4 to do code review. It has been successfully tested.
+#
+
+name: Code Review Version 1 - GPT4
 
 on:
   pull_request:
+    types: [opened] # Only run on pull request events, the 1st time pull request created.
 permissions:
   issues: write
   pull-requests: write
@@ -23,17 +30,7 @@ jobs:
           raw_diff_file_output: diff.txt
           file_output_only: "true" #Makes us exclude printing the diff on the console for security purposes
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-duration-seconds: 3600
-
-      - name: Get AWS credentials (Optional Step)
-        run: aws sts get-caller-identity
-
-      - name: Perform Code Review With Claude 3 Sonnet
+      - name: Perfom Code Review With gpt-4
         id: code_review_suggestions
         run: |
           # Get the code changes
@@ -44,19 +41,20 @@ jobs:
           # Escape newlines and double quotes in the changed_code
           escaped_code=$(echo "$changed_code" | jq -s -R -r @json)
 
-          # Call Claude 3 Sonnet using AWS Bedrock
-          response=$(aws bedrock-runtime invoke-model \
-            --model-id arn:aws:bedrock:us-east-1::model/claude3-sonnet \
-            --body "{
-              \"input\": {
-                \"text\": $escaped_code
-              }
-            }" \
-            --content-type "application/json")
+          response=$(curl -s https://api.openai.com/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.OPEN_AI_KEY }}" \
+            -d "{
+              \"model\": \"gpt-4\",
+              \"messages\": [
+                { \"role\": \"system\", \"content\": \"${{ vars.CODE_REVIEW_PROMPT }}\" },
+                { \"role\": \"user\", \"content\": $escaped_code }
+              ]
+            }")
 
           echo "This is the response $response"
 
-          code_review_suggestions=$(echo "$response" | jq -r '.outputs[0].content')
+          code_review_suggestions=$(echo "$response" | jq -r '.choices[0].message.content')
 
           echo "$code_review_suggestions" > code_suggestions.txt
 

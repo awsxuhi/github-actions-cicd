@@ -1,0 +1,57 @@
+# Code Review Version 2 - Claude3
+#
+# This version of the workflow directly uses `tmokmss/bedrock-pr-reviewer@main` for code review.
+# Testing has shown that it works successfully.
+#
+
+name: Code Review Version 2 - Claude3
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+  id-token: write
+  contents: read
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.event.number || github.head_ref || github.sha }}-${{ github.workflow }}-${{ github.event_name == 'pull_request_review_comment' && 'pr_comment' || 'pr' }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_review_comment' }}
+
+jobs:
+  code_review:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      # - name: Checkout code
+      #   uses: actions/checkout@v4
+      #   with:
+      #     fetch-depth: 0
+
+      # - uses: GrantBirki/git-diff-action@v2.4.0
+      #   id: git-diff
+      #   with:
+      #     raw_diff_file_output: diff.txt
+      #     file_output_only: "true"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: gha-session
+          role-duration-seconds: 3600
+
+      - name: Get AWS credentials (Optional Step)
+        run: aws sts get-caller-identity
+
+      - name: PR review
+        uses: tmokmss/bedrock-pr-reviewer@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          debug: false
+          review_simple_changes: false
+          review_comment_lgtm: false
