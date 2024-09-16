@@ -16,7 +16,7 @@ permissions:
   contents: read # This is required for actions/checkout
 
 jobs:
-  code_review:
+  code_review_v1_gpt4:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

@@ -13,7 +13,7 @@ env:
   AWS_REGION: us-east-1
 
 jobs:
-  codereview_and_unit_test:
+  aws_genai_cicd:
     runs-on: ubuntu-latest
     environment: production
     permissions:

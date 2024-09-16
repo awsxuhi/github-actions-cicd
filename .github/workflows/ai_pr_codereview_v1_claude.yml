@@ -4,7 +4,7 @@
 # then calls bedrock/claude3 by executing AWS CLI. It has NOT been successfully tested yet.
 #
 
-name: Code Review Version 1 - Claude3
+name: Code Review Version 1 - Claude
 
 on:
   pull_request:
@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 jobs:
-  code_review:
+  code_review_v1_claude:
     runs-on: ubuntu-latest
     environment: production
     steps:
