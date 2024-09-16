@@ -1,4 +1,10 @@
-name: Claude3 Code Review Version 2
+# Code Review Version 2 - Claude3
+#
+# This version of the workflow directly uses `tmokmss/bedrock-pr-reviewer@main` for code review.
+# Testing has shown that it works successfully.
+#
+
+name: Code Review Version 2 - Claude3
 
 on:
   pull_request:
@@ -35,7 +41,8 @@ jobs:
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: gha-session-${{ github.run_id }}-${{ github.job }}
+          # role-session-name: gha-session-${{ github.run_id }}-${{ github.job }}
+          role-session-name: gha-session
           # role-session-name: gha-session-10871592797-review
           role-duration-seconds: 3600
 

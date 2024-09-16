@@ -1,4 +1,10 @@
-name: GPT Code Review
+# Code Review Version 1 - GPT4
+#
+# This version first uses `GrantBirki/git-diff-action@v2.4.0` to get the code differences,
+# then calls openai/gpt4 to do code review. It has been successfully tested.
+#
+
+name: Code Review Version 1 - GPT4
 
 on:
   pull_request:
