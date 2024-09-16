@@ -41,7 +41,7 @@ jobs:
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: gha-session-${{ github.workflow.replace(' ', '_') }}-${{ github.job }}-${{ github.run_id }}
+          role-session-name: gha-session
           role-duration-seconds: 3600
 
       - name: Get AWS credentials (Optional Step)

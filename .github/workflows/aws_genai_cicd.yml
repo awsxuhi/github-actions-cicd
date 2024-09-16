@@ -64,7 +64,7 @@ jobs:
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: gha-session-${{ github.workflow.replace(' ', '_') }}-${{ github.job }}-${{ github.run_id }}
+          role-session-name: gha-session-${{ github.run_id }}-${{ github.job }}
           role-duration-seconds: 3600
           # `role-session-name` is an optional field used to specify a unique name for a role session. By assigning a unique `role-session-name` to each role session, you can more easily track and audit operations in AWS Cloud. This is particularly useful when reviewing CloudTrail logs, as it allows you to identify different sessions and their related activities based on the `role-session-name`.
           # role-session-name example: gha-session-10871592797-review, you can also simply using gha-session as the name. Don't worry about 2 concurrent runs having the same role-session-name.
