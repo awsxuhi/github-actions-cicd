@@ -654,7 +654,7 @@ export async function generateCodeReviewComment(
 
 async function run(): Promise<void> {
   try {
-    const githubToken = core.getInput("github-token");
+    const githubToken = core.getInput("github-token", { required: true });
     const awsRegion = core.getInput("aws-region");
     const modelId = core.getInput("model-id");
     const excludeFiles = core.getInput("generate-code-review-exclude-files");
