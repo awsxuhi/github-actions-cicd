@@ -1,0 +1,32 @@
+name: "AI Code Review Action"
+description: "Perform code reviews and comment on diffs using OpenAI API."
+inputs:
+  GITHUB_TOKEN:
+    description: "GitHub token to interact with the repository."
+    required: true
+  # OPENAI_API_KEY:
+  #   description: "OpenAI API key for GPT."
+  #   required: true
+  # OPENAI_API_MODEL:
+  #   description: "OpenAI API model."
+  #   required: false
+  #   default: "gpt-4"
+  exclude:
+    description: "Glob patterns to exclude files from the diff analysis"
+    required: false
+    default: ""
+  BEDROCK_MODEL_ID:
+    description: "Model ID"
+    required: false
+    # Use specific prefix sagemaker.<api url> to specify the model hosted in AWS SageMaker
+    default: "anthropic.claude-3-5-sonnet-20240620-v1:0"
+  AWS_REGION:
+    description: "AWS region"
+    required: false
+    default: "us-east-1"
+runs:
+  using: "node16"
+  main: "dist/index.js"
+branding:
+  icon: "aperture"
+  color: "green"
