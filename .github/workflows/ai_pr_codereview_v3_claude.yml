@@ -2,15 +2,20 @@
 #
 # The action used in this workflow refers to the project found at https://github.com/freeedcom/ai-codereviewer.
 #
+# 使用 pull_request_target 事件时，工作流程将以目标分支的上下文运行，但检出的代码可能来自源分支（dev 分支）。
+#
 
 name: Code Review Version 3 - Claude3
 
 on:
   workflow_dispatch:
-  pull_request:
-    # types:
-    #   - opened
-    #   - synchronize
+  # use pull_request_target instead of pull_request to allow workflow be triggered on the dev branch
+  pull_request_target:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
 
 permissions:
   issues: write
@@ -18,12 +23,19 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  AWS_REGION: us-east-1
+
 jobs:
   code_review_v3_claude:
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # 确保检出的是拉取请求的源代码
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
