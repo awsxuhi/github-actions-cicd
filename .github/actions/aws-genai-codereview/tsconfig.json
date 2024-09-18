@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ESNext" /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */,
+    "lib": ["ESNext"] /* Specify a set of bundled library declaration files that describe the target runtime environment. */,
+    "module": "ESNext" /* Specify what module code is generated. // 设置为 esnext 以支持 ESM */,
+    "rootDir": "src" /* Specify the root folder within your source files. */,
+    "outDir": "lib" /* Specify an output folder for all emitted files. */,
+    "baseUrl": "./" /* Specify the base directory to resolve non-relative module names. */,
+    "paths": {
+      "@/*": ["./src/*"]
+    } /* Specify a set of entries that re-map imports to additional lookup locations. */,
+    "esModuleInterop": true /* Emit additional JavaScript to ease support for importing CommonJS modules. This enables 'allowSyntheticDefaultImports' for type compatibility. */,
+    "allowSyntheticDefaultImports": true /* not needed when esModuleInterop=true */,
+    "forceConsistentCasingInFileNames": true /* Ensure that casing is correct in imports. */,
+    "strict": true /* Enable all strict type-checking options. */,
+    "skipLibCheck": true /* Skip type checking all .d.ts files. */,
+    "incremental": false,
+    "sourceMap": false,
+    "allowJs": true,
+    "checkJs": false,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noImplicitAny": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist", "lib", "**/cdk.out", "**/node_modules", "**/build", "**/dist", "**/test", "**/__tests__", "**/*.test.ts"]
+}
