@@ -106,5 +106,5 @@
     "skipLibCheck": true /* Skip type checking all .d.ts files. */
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["**/cdk.out", "**/node_modules", "**/build", "**/dist", "**/test", "**/__tests__", "**/*.test.ts"]
+  "exclude": ["dist", "lib", "**/cdk.out", "**/node_modules", "**/build", "**/dist", "**/test", "**/__tests__", "**/*.test.ts"]
 }

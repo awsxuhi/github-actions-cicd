@@ -6,49 +6,19 @@ import { setTimeout } from 'timers/promises';
 import { validateTestCases } from './testValidator';
 import { analyzeCoverage } from './coverageAnalyzer';
 import { TestCase, generateFakeResponse, createPrompt } from './testUtils';
-
+import { invokeModel } from './utils';
 // Remove the duplicate TestCase interface and generateFakeResponse function
 
 export async function generateUnitTests(client: BedrockRuntimeClient, modelId: string, sourceCode: string): Promise<TestCase[]> {
     const prompt = createPrompt(sourceCode);
     console.log('Generating unit tests with total prompt length:', prompt.length);
 
-    // Define the prompt to send to Claude
-    const payload = {
-        anthropic_version: "bedrock-2023-05-31",
-        max_tokens: 4096,
-        messages: [
-          {
-            role: "user",
-            content: [{
-              type: "text",
-              text: prompt,
-            }],
-          },
-        ],
-      };
-
-    const command = new InvokeModelCommand({
-        // modelId: "anthropic.claude-3-5-sonnet-20240620-v1:0",
-        modelId: modelId,
-        contentType: "application/json",
-        body: JSON.stringify(payload),
-    });
-
-    const timeoutMs = 45 * 1000; // 45 seconds considering the prompt length
     try {
-      const apiResponse = await Promise.race([
-        client.send(command),
-        setTimeout(timeoutMs),
-      ]);
-      if (apiResponse === undefined) {
+      const finalResult = await invokeModel(client, modelId, prompt);
+      if (finalResult === undefined) {
         console.log('Request timed out, returning fake response');
         return await generateFakeResponse();
       }
-      const decodedResponseBody = new TextDecoder().decode(apiResponse.body);
-      const responseBody = JSON.parse(decodedResponseBody);
-      const finalResult = responseBody.content[0].text;
-      
       try {
         const parsedTestCases = JSON.parse(finalResult.replace(/\n/g, '\\n')) as TestCase[];
         if (!Array.isArray(parsedTestCases)) {
@@ -90,7 +60,30 @@ function extractTestCases(rawResponse: string): TestCase[] {
     return testCases;
 }
 
-export async function runUnitTests(testCases: TestCase[], sourceCode: string): Promise<void> {
+export async function runUnitTests(testCases: TestCase[], unitTestSourceFolder: string): Promise<void> {
+
+    const sourceFilePath = path.join(process.cwd(), unitTestSourceFolder);
+    let sourceCode = '';
+
+    try {
+        const files = fs.readdirSync(sourceFilePath);
+        for (const file of files) {
+        if (file.endsWith('.ts') || file.endsWith('.js')) {
+            const filePath = path.join(sourceFilePath, file);
+            const fileContent = fs.readFileSync(filePath, 'utf-8');
+            sourceCode += fileContent + '\n\n';
+        }
+        }
+    } catch (error) {
+        console.error(`Error reading source files: ${error}`);
+        return;
+    }
+
+    if (sourceCode === '') {
+        console.warn('No source code files found in the specified directory. Skipping unit tests execution and report generation.');
+        return;
+    }
+
     if (!Array.isArray(testCases) || testCases.length === 0) {
         console.log('Input test cases', testCases);
         console.log('No test cases to run');
