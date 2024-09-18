@@ -1,16 +1,20 @@
 #!/bin/bash
-# Usage: ./code_layout.sh [REPO_DIR] [OUTPUT_FILE] [FILE_EXTENSIONS]
-# Description: Combine all code files in a repository into a single file, extracting functions, skipping node_modules
-# Example: ./code_layout.sh ~/projects/my_project combined_functions.txt py js html css java cpp h cs
+# Usage: ./code_layout.sh [REPO_DIR] [OUTPUT_FILE] [EXTRACT_MODE] [FILE_EXTENSIONS]
+# Description: Combine all code files in a repository into a single file, with option to extract functions or include whole file content
+# Example: ./code_layout.sh ~/projects/my_project combined_output.txt functions py js html css java cpp h cs
+# Example: ./code_layout.sh ~/projects/my_project combined_output.txt whole py js html css java cpp h cs
 
 # Directory of the repository (default to current directory if not specified)
 REPO_DIR="${1:-.}"
 
-# Output file (default to combined_functions.txt if not specified)
-OUTPUT_FILE="${2:-combined_functions.txt}"
+# Output file (default to combined_output.txt if not specified)
+OUTPUT_FILE="${2:-combined_output.txt}"
+
+# Extract mode (default to 'functions' if not specified)
+EXTRACT_MODE="${3:-functions}"
 
 # List of file extensions to include (default to a predefined list if not specified)
-FILE_EXTENSIONS=("${@:3}")
+FILE_EXTENSIONS=("${@:4}")
 if [ ${#FILE_EXTENSIONS[@]} -eq 0 ]; then
     FILE_EXTENSIONS=("py" "js" "java" "cpp" "ts")
 fi
@@ -29,14 +33,13 @@ combine_files() {
 
     eval $find_command | while IFS= read -r -d '' file; do
         echo "// File: $file" >> "$OUTPUT_FILE"
-        # # Use grep with Perl-compatible regex to extract functions
-        # grep -Pzo "(?:export\s+)?(?:async\s+)?function\s+\w+\s*\([^)]*\)(?:\s*:\s*[^{]*?)?\s*{(?:[^{}]*|\{(?:[^{}]*|\{[^{}]*\})*\})*}" "$file" | \
-        # # Replace null bytes with newlines
-        # sed -e 's/\x0/\n\n/g' >> "$OUTPUT_FILE"
-        # echo -e "\n\n" >> "$OUTPUT_FILE"
-
-        # Use perl to extract functions in consideration of performance, since above grep command may be slow for large files with warnings: grep: exceeded PCRE's backtracking limit
-        perl -0777 -ne 'print "$&\n\n" while /((?:export\s+)?(?:async\s+)?function\s+\w+\s*\([^)]*\)(?:\s*:\s*[^{]*?)?\s*{(?:[^{}]*|\{(?:[^{}]*|\{[^{}]*\})*\})*})/gs' "$file" >> "$OUTPUT_FILE"
+        if [ "$EXTRACT_MODE" = "functions" ]; then
+            # Extract functions only
+            perl -0777 -ne 'print "$&\n\n" while /((?:export\s+)?(?:async\s+)?function\s+\w+\s*\([^)]*\)(?:\s*:\s*[^{]*?)?\s*{(?:[^{}]*|\{(?:[^{}]*|\{[^{}]*\})*\})*})/gs' "$file" >> "$OUTPUT_FILE"
+        else
+            # Include whole file content
+            cat "$file" >> "$OUTPUT_FILE"
+        fi
         echo -e "\n" >> "$OUTPUT_FILE"
     done
 }
@@ -44,4 +47,9 @@ combine_files() {
 # Combine the files
 combine_files "$REPO_DIR"
 
-echo "All functions have been extracted and combined into $OUTPUT_FILE"
+echo "All files have been processed and combined into $OUTPUT_FILE"
+if [ "$EXTRACT_MODE" = "functions" ]; then
+    echo "Mode: Extracted functions only"
+else
+    echo "Mode: Included whole file content"
+fi
