@@ -8,7 +8,7 @@ name: Code Review Version 2 - Claude3
 
 on:
   workflow_dispatch:
-  # pull_request:
+  pull_request:
 
 permissions:
   issues: write
