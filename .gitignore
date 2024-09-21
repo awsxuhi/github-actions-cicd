@@ -1,4 +1,4 @@
-*.js
+# *.js uncomment this line if you are a cdk project. For this CICD demo, we common out *.js, so that *.js files could be pushed to github.
 !jest.config.js
 *.d.ts
 node_modules
@@ -11,3 +11,4 @@ cdk.out
 typescript_output
 
 .vscode
+dist
