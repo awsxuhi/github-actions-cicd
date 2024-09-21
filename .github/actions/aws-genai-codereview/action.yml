@@ -1,32 +1,31 @@
-name: 'AI-based PR Reviewer & Summarizer with Chat Capabilities (Bedrock Claude)'
-description: 'AI-based PR Reviewer & Summarizer with Chat Capabilities'
+name: "AI-based PR Reviewer & Summarizer with Chat Capabilities (Bedrock Claude)"
+description: "AI-based PR Reviewer & Summarizer with Chat Capabilities"
 branding:
-  icon: 'git-merge'
-  color: 'orange'
-author: 'tmokmss'
+  icon: "git-merge"
+  color: "orange"
+author: "awsxuhi"
 inputs:
   debug:
     required: false
-    description: 'Enable debug mode'
-    default: 'false'
+    description: "Enable debug mode"
+    default: "false"
   max_files:
     required: false
-    description:
-      'Max files to summarize and review. Less than or equal to 0 means no
-      limit.'
-    default: '150'
+    description: "Max files to summarize and review. Less than or equal to 0 means no
+      limit."
+    default: "150"
   review_simple_changes:
     required: false
-    description: 'Review even when the changes are simple'
-    default: 'false'
+    description: "Review even when the changes are simple"
+    default: "false"
   review_comment_lgtm:
     required: false
-    description: 'Leave comments even if the patch is LGTM'
-    default: 'false'
+    description: "Leave comments even if the patch is LGTM"
+    default: "false"
   only_allow_collaborator:
     required: false
-    description: 'Allow Bedrock access only for collaborators'
-    default: 'false'
+    description: "Allow Bedrock access only for collaborators"
+    default: "false"
   path_filters:
     required: false
     description: |
@@ -142,45 +141,43 @@ inputs:
       !**/*.tfstate.backup
   disable_review:
     required: false
-    description: 'Only provide the summary and skip the code review.'
-    default: 'false'
+    description: "Only provide the summary and skip the code review."
+    default: "false"
   disable_release_notes:
     required: false
-    description: 'Disable release notes'
-    default: 'false'
+    description: "Disable release notes"
+    default: "false"
   bedrock_light_model:
     required: false
-    description:
-      'Model to use for simple tasks like summarizing diff on a file.'
-    default: 'anthropic.claude-3-haiku-20240307-v1:0'
+    description: "Model to use for simple tasks like summarizing diff on a file."
+    default: "anthropic.claude-3-haiku-20240307-v1:0"
   bedrock_heavy_model:
     required: false
-    description: 'Model to use for complex tasks such as code reviews.'
-    default: 'anthropic.claude-3-sonnet-20240229-v1:0'
+    description: "Model to use for complex tasks such as code reviews."
+    default: "anthropic.claude-3-sonnet-20240229-v1:0"
   bedrock_model_temperature:
     required: false
-    description: 'Temperature for GPT model'
-    default: '0.05'
+    description: "Temperature for GPT model"
+    default: "0.05"
   bedrock_retries:
     required: false
-    description:
-      'How many times to retry Bedrock API in case of timeouts or errors?'
-    default: '5'
+    description: "How many times to retry Bedrock API in case of timeouts or errors?"
+    default: "5"
   bedrock_timeout_ms:
     required: false
-    description: 'Timeout for Bedrock API call in millis'
-    default: '360000'
+    description: "Timeout for Bedrock API call in millis"
+    default: "360000"
   bedrock_concurrency_limit:
     required: false
-    description: 'How many concurrent API calls to make to Bedrock servers?'
-    default: '6'
+    description: "How many concurrent API calls to make to Bedrock servers?"
+    default: "6"
   github_concurrency_limit:
     required: false
-    description: 'How many concurrent API calls to make to GitHub?'
-    default: '6'
+    description: "How many concurrent API calls to make to GitHub?"
+    default: "6"
   system_message:
     required: false
-    description: 'System message to be sent to Bedrock'
+    description: "System message to be sent to Bedrock"
     default: |
       You are `/reviewbot` (aka `github-actions[bot]`), a language model 
       trained by Bedrock. Your purpose is to act as a highly experienced 
@@ -190,7 +187,7 @@ inputs:
       Follow the following instructions.
   summarize:
     required: false
-    description: 'The prompt for final summarization response'
+    description: "The prompt for final summarization response"
     default: |
       Provide your final response in markdown with the following content:
 
@@ -203,16 +200,15 @@ inputs:
       GitHub pull request. Use the titles "Walkthrough" and "Changes" and they must be H2.
   review_file_diff:
     required: false
-    description: 'The additional instruction for reviewing file diff'
+    description: "The additional instruction for reviewing file diff"
     default: |
       - Do NOT provide general feedback, summaries, explanations of changes, or praises for making good additions. 
       - Focus solely on offering specific, objective insights based on the given context and refrain from making broad comments about potential impacts on the system or question intentions behind the changes.
 
   summarize_release_notes:
     required: false
-    description:
-      'The prompt for generating release notes in the same chat as summarize
-      stage'
+    description: "The prompt for generating release notes in the same chat as summarize
+      stage"
     default: |
       Craft concise release notes for the pull request. 
       Focus on the purpose and user impact, categorizing changes as "New Feature", "Bug Fix", 
@@ -225,8 +221,8 @@ inputs:
     default: en-US
   bot_icon:
     required: false
-    description: 'The icon for the bot'
+    description: "The icon for the bot"
     default: 🤖
 runs:
-  using: 'node20'
-  main: 'dist/index.js'
+  using: "node20"
+  main: "dist/index.js"
