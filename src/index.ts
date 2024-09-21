@@ -56,6 +56,7 @@ export class SharedResourcesConstruct extends Construct {
     this.createPythonLambdaLayers();
     this.createXOriginVerifySecret();
     this.createRestApi();
+    this.createSharedBucket();
     this.outputParams_in_CloudFormation_and_ParameterStore();
   }
 
@@ -237,6 +238,28 @@ export class SharedResourcesConstruct extends Construct {
         maxAge: _cdk.Duration.minutes(10), // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Max-Age default: 5s
       },
       binaryMediaTypes: ["image/*", "audio/*", "video/*", "application/pdf", "application/msword", "application/vnd.*", "multipart/form-data"],
+    });
+  }
+
+  /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+  private createSharedBucket() {
+    // For files upload before conducting analysis
+    const bucketName = `${projectConfig.projectName}-${this.stackIdSuffix}-shared-bucket`;
+    this.sharedBucket = new _s3.Bucket(this, `${projectConfig.projectName}-shared-bucket`, {
+      bucketName: bucketName,
+      blockPublicAccess: _s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: _cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      transferAcceleration: true,
+      cors: [
+        {
+          allowedHeaders: ["*"],
+          allowedMethods: [_s3.HttpMethods.PUT, _s3.HttpMethods.POST, _s3.HttpMethods.GET, _s3.HttpMethods.HEAD],
+          allowedOrigins: ["*"],
+          exposedHeaders: ["ETag"],
+          maxAge: 3000,
+        },
+      ],
     });
   }
 
