@@ -35,7 +35,8 @@ git add src/
 current_date=$(date '+%Y-%m-%d')
 
 # Generate a random number between 0 and 1000, RANDOM is between 0 and 32767
-random_number=$(( RANDOM % 100 + 1 ))  # 生成 1 到 100 之间的数
+# Use the following line to generate a number between 100 and 999
+random_number=$(( RANDOM % 900 + 100 ))
 
 commit_message="demo $current_date $random_number"
 
