@@ -14,9 +14,9 @@ for dir in "${EXCLUDE_DIRS[@]}"; do
 done
 
 # 遍历当前目录下的所有 .js 和 .d.ts 文件，但跳过指定的目录
-for file in $(eval find . -type f \( -name "*.js" -o -name "*.d.ts" \) $EXCLUDE_FIND_PARAMS); do
+for file in $(eval find . -type f \( -name "*.py" -o -name "*.d.py" \) $EXCLUDE_FIND_PARAMS); do
     # 基于当前文件，获得相应的 .ts 文件路径
-    ts_file="${file%.*}.ts"
+    ts_file="${file%.*}.py"
 
     # 检查 .ts 文件是否存在
     if [ -f "$ts_file" ]; then
