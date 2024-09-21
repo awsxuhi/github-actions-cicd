@@ -35,6 +35,7 @@ export class QaRequestHandlerToSnsTopicConstruct extends Construct {
     const myRoles = MyRoles.getInstance(this);
 
     // Step 1: Create requestHandler which is handling question-answering
+    /* I guess these lines are not needed. */
     const functionName = "question-answering";
     const functionNameWithProjectNameAsPrefix = `${projectConfig.projectName}-${functionName}`;
 
