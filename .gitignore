@@ -13,4 +13,7 @@ typescript_output
 .vscode
 
 # Only ignore the dist folder in the root of the project, if you want to igore all the dist folders, use the `dist/` isntead.
-/dist/
+dist/
+!.github/actions/aws-genai-codereview/dist/
+!.github/actions/aws-genai-cicd/dist/
+!.github/actions/ai-codereviewer/dist/
