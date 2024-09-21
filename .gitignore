@@ -11,4 +11,6 @@ cdk.out
 typescript_output
 
 .vscode
-dist
+
+# Only ignore the dist folder in the root of the project, if you want to igore all the dist folders, use the `dist/` isntead.
+/dist/
