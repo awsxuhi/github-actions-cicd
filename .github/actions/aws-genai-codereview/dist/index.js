@@ -93179,11 +93179,11 @@ class Options {
     lightTokenLimits;
     heavyTokenLimits;
     language;
-    constructor(debug, disableReview, disableReleaseNotes, onlyAllowCollaborator, maxFiles = '0', reviewSimpleChanges = false, reviewCommentLGTM = false, pathFilters = null, systemMessage = '', reviewFileDiff = '', bedrockLightModel, bedrockHeavyModel, bedrockModelTemperature = '0.0', bedrockRetries = '3', bedrockTimeoutMS = '120000', bedrockConcurrencyLimit = '6', githubConcurrencyLimit = '6', language = 'en-US') {
+    constructor(debug, disableReview, disableReleaseNotes, onlyAllowCollaborator, maxFiles = "0", reviewSimpleChanges = false, reviewCommentLGTM = false, pathFilters = null, systemMessage = "", reviewFileDiff = "", bedrockLightModel, bedrockHeavyModel, bedrockModelTemperature = "0.0", bedrockRetries = "3", bedrockTimeoutMS = "120000", bedrockConcurrencyLimit = "6", githubConcurrencyLimit = "6", language = "en-US") {
         this.debug = debug;
         this.disableReview = disableReview;
         this.disableReleaseNotes = disableReleaseNotes;
-        this.onlyAllowCollaborator = onlyAllowCollaborator;
+        this.onlyAllowCollaborator = onlyAllowCollaborator; // new
         this.maxFiles = parseInt(maxFiles);
         this.reviewSimpleChanges = reviewSimpleChanges;
         this.reviewCommentLGTM = reviewCommentLGTM;
@@ -93238,7 +93238,7 @@ class PathFilter {
             for (const rule of rules) {
                 const trimmed = rule?.trim();
                 if (trimmed) {
-                    if (trimmed.startsWith('!')) {
+                    if (trimmed.startsWith("!")) {
                         this.rules.push([trimmed.substring(1).trim(), true]);
                     }
                     else {
@@ -93279,7 +93279,7 @@ class PathFilter {
 class BedrockOptions {
     model;
     tokenLimits;
-    constructor(model = 'anthropic.claude-instant-v1', tokenLimits = null) {
+    constructor(model = "anthropic.claude-instant-v1", tokenLimits = null) {
         this.model = model;
         if (tokenLimits != null) {
             this.tokenLimits = tokenLimits;
