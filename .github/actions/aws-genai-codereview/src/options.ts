@@ -2,6 +2,7 @@ import { info } from "@actions/core";
 import { minimatch } from "minimatch";
 import { TokenLimits } from "./limits";
 
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 export class Options {
   debug: boolean;
   disableReview: boolean;
@@ -68,6 +69,8 @@ export class Options {
 
   // print all options using core.info
   print(): void {
+    console.log("\x1b[36m%s\x1b[0m", "Printing options... <options.print()>");
+    info(`Printing options... <options.print()>`);
     info(`debug: ${this.debug}`);
     info(`disable_review: ${this.disableReview}`);
     info(`disable_release_notes: ${this.disableReleaseNotes}`);
@@ -97,8 +100,12 @@ export class Options {
   }
 }
 
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 export class PathFilter {
-  private readonly rules: Array<[string /* rule */, boolean /* exclude */]>;
+  private readonly rules: Array<[string /* rule */, boolean /* isExclude */]>;
+
+  // 如果规则以 ! 开头，表示这是一个排除规则，去掉 !，然后将规则和 true （代表排除规则）存入 rules 数组。
+  // 如果规则不是以 ! 开头，则它是包含规则，将规则和 false 存入数组，表示这是一个包含规则。
 
   constructor(rules: string[] | null = null) {
     this.rules = [];
@@ -130,23 +137,25 @@ export class PathFilter {
     let excluded = false;
     let inclusionRuleExists = false;
 
-    for (const [rule, exclude] of this.rules) {
+    for (const [rule, isExclude] of this.rules) {
       if (minimatch(path, rule)) {
-        if (exclude) {
+        if (isExclude) {
           excluded = true;
         } else {
           included = true;
         }
       }
-      if (!exclude) {
+      if (!isExclude) {
         inclusionRuleExists = true;
       }
     }
 
+    // 如果不存在包含规则，或者路径匹配了至少一个包含规则并且没有被任何排除规则排除，返回 true，表示路径应该被处理。否则，返回 false，表示路径应该被忽略。
     return (!inclusionRuleExists || included) && !excluded;
   }
 }
 
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 export class BedrockOptions {
   model: string;
   tokenLimits: TokenLimits;
