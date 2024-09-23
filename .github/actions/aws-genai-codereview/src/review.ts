@@ -1,8 +1,8 @@
-import {error, info, warning} from '@actions/core'
+import { error, info, warning } from "@actions/core";
 // eslint-disable-next-line camelcase
-import {context as github_context} from '@actions/github'
-import pLimit from 'p-limit'
-import {type Bot} from './bot'
+import { context as github_context } from "@actions/github";
+import pLimit from "p-limit";
+import { type Bot } from "./bot";
 import {
   Commenter,
   COMMENT_REPLY_TAG,
@@ -10,100 +10,86 @@ import {
   RAW_SUMMARY_START_TAG,
   SHORT_SUMMARY_END_TAG,
   SHORT_SUMMARY_START_TAG,
-  SUMMARIZE_TAG
-} from './commenter'
-import {Inputs} from './inputs'
-import {octokit} from './octokit'
-import {type Options} from './options'
-import {type Prompts} from './prompts'
-import {getTokenCount} from './tokenizer'
+  SUMMARIZE_TAG,
+} from "./commenter";
+import { Inputs } from "./inputs";
+import { octokit } from "./octokit";
+import { type Options } from "./options";
+import { type Prompts } from "./prompts";
+import { getTokenCount } from "./tokenizer";
 
 // eslint-disable-next-line camelcase
-const context = github_context
-const repo = context.repo
+const context = github_context;
+const repo = context.repo;
 
-const ignoreKeyword = '/reviewbot: ignore'
+const ignoreKeyword = "/reviewbot: ignore";
 
-export const codeReview = async (
-  lightBot: Bot,
-  heavyBot: Bot,
-  options: Options,
-  prompts: Prompts
-): Promise<void> => {
-  const commenter: Commenter = new Commenter()
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options, prompts: Prompts): Promise<void> => {
+  const commenter: Commenter = new Commenter();
 
-  const bedrockConcurrencyLimit = pLimit(options.bedrockConcurrencyLimit)
-  const githubConcurrencyLimit = pLimit(options.githubConcurrencyLimit)
+  const bedrockConcurrencyLimit = pLimit(options.bedrockConcurrencyLimit);
+  const githubConcurrencyLimit = pLimit(options.githubConcurrencyLimit);
 
-  if (
-    context.eventName !== 'pull_request' &&
-    context.eventName !== 'pull_request_target'
-  ) {
-    warning(
-      `Skipped: current event is ${context.eventName}, only support pull_request event`
-    )
-    return
+  if (context.eventName !== "pull_request" && context.eventName !== "pull_request_target") {
+    warning(`Skipped: current event is ${context.eventName}, only support pull_request event`);
+    return;
   }
+
+  // 虽然 pull_request 和 pull_request_target 是不同的事件类型，但它们的结构相同，GitHub 会在 context.payload.pull_request 中存储拉取请求的数据。因此，context.payload.pull_request 适用于两种事件类型。
   if (context.payload.pull_request == null) {
-    warning('Skipped: context.payload.pull_request is null')
-    return
+    warning("Skipped: context.payload.pull_request is null");
+    return;
   }
 
-  const inputs: Inputs = new Inputs()
-  inputs.title = context.payload.pull_request.title
+  // 调试：打印出 context.payload.pull_request 对象；用于以更具结构化的方式打印复杂的对象。
+  console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.pull_request... <review/codeReview(), console.log()>");
+  console.log("Debug: pull_request payload:", context.payload.pull_request);
+
+  // 或者使用 console.dir 打印出对象的完整结构
+  // depth: null：确保显示对象的所有嵌套层级，打印出完整的结构。
+  // colors: true：让终端输出的结果带有颜色，方便阅读。
+  console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.pull_request... <review/codeReview(), console.dir()>");
+  console.dir(context.payload.pull_request, { depth: null, colors: true });
+
+  const inputs: Inputs = new Inputs();
+  inputs.title = context.payload.pull_request.title;
   if (context.payload.pull_request.body != null) {
-    inputs.description = commenter.getDescription(
-      context.payload.pull_request.body
-    )
+    inputs.description = commenter.getDescription(context.payload.pull_request.body);
   }
 
   // if the description contains ignore_keyword, skip
   if (inputs.description.includes(ignoreKeyword)) {
-    info('Skipped: description contains ignore_keyword')
-    return
+    info("Skipped: description contains ignore_keyword");
+    return;
   }
 
-  inputs.systemMessage = options.systemMessage
-  inputs.reviewFileDiff = options.reviewFileDiff
+  inputs.systemMessage = options.systemMessage;
+  inputs.reviewFileDiff = options.reviewFileDiff;
 
   // get SUMMARIZE_TAG message
-  const existingSummarizeCmt = await commenter.findCommentWithTag(
-    SUMMARIZE_TAG,
-    context.payload.pull_request.number
-  )
-  let existingCommitIdsBlock = ''
-  let existingSummarizeCmtBody = ''
+  const existingSummarizeCmt = await commenter.findCommentWithTag(SUMMARIZE_TAG, context.payload.pull_request.number);
+  let existingCommitIdsBlock = "";
+  let existingSummarizeCmtBody = "";
   if (existingSummarizeCmt != null) {
-    existingSummarizeCmtBody = existingSummarizeCmt.body
-    inputs.rawSummary = commenter.getRawSummary(existingSummarizeCmtBody)
-    inputs.shortSummary = commenter.getShortSummary(existingSummarizeCmtBody)
-    existingCommitIdsBlock = commenter.getReviewedCommitIdsBlock(
-      existingSummarizeCmtBody
-    )
+    existingSummarizeCmtBody = existingSummarizeCmt.body;
+    inputs.rawSummary = commenter.getRawSummary(existingSummarizeCmtBody);
+    inputs.shortSummary = commenter.getShortSummary(existingSummarizeCmtBody);
+    existingCommitIdsBlock = commenter.getReviewedCommitIdsBlock(existingSummarizeCmtBody);
   }
 
-  const allCommitIds = await commenter.getAllCommitIds()
+  const allCommitIds = await commenter.getAllCommitIds();
   // find highest reviewed commit id
-  let highestReviewedCommitId = ''
-  if (existingCommitIdsBlock !== '') {
-    highestReviewedCommitId = commenter.getHighestReviewedCommitId(
-      allCommitIds,
-      commenter.getReviewedCommitIds(existingCommitIdsBlock)
-    )
+  let highestReviewedCommitId = "";
+  if (existingCommitIdsBlock !== "") {
+    highestReviewedCommitId = commenter.getHighestReviewedCommitId(allCommitIds, commenter.getReviewedCommitIds(existingCommitIdsBlock));
   }
 
-  if (
-    highestReviewedCommitId === '' ||
-    highestReviewedCommitId === context.payload.pull_request.head.sha
-  ) {
-    info(
-      `Will review from the base commit: ${
-        context.payload.pull_request.base.sha as string
-      }`
-    )
-    highestReviewedCommitId = context.payload.pull_request.base.sha
+  if (highestReviewedCommitId === "" || highestReviewedCommitId === context.payload.pull_request.head.sha) {
+    info(`Will review from the base commit: ${context.payload.pull_request.base.sha as string}`);
+    highestReviewedCommitId = context.payload.pull_request.base.sha;
   } else {
-    info(`Will review from commit: ${highestReviewedCommitId}`)
+    info(`Will review from commit: ${highestReviewedCommitId}`);
   }
 
   // Fetch the diff between the highest reviewed commit and the latest commit of the PR branch
@@ -111,115 +97,101 @@ export const codeReview = async (
     owner: repo.owner,
     repo: repo.repo,
     base: highestReviewedCommitId,
-    head: context.payload.pull_request.head.sha
-  })
+    head: context.payload.pull_request.head.sha,
+  });
 
   // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
   const targetBranchDiff = await octokit.repos.compareCommits({
     owner: repo.owner,
     repo: repo.repo,
     base: context.payload.pull_request.base.sha,
-    head: context.payload.pull_request.head.sha
-  })
+    head: context.payload.pull_request.head.sha,
+  });
 
-  const incrementalFiles = incrementalDiff.data.files
-  const targetBranchFiles = targetBranchDiff.data.files
+  const incrementalFiles = incrementalDiff.data.files;
+  const targetBranchFiles = targetBranchDiff.data.files;
 
   if (incrementalFiles == null || targetBranchFiles == null) {
-    warning('Skipped: files data is missing')
-    return
+    warning("Skipped: files data is missing");
+    return;
   }
 
   // Filter out any file that is changed compared to the incremental changes
-  const files = targetBranchFiles.filter(targetBranchFile =>
-    incrementalFiles.some(
-      incrementalFile => incrementalFile.filename === targetBranchFile.filename
-    )
-  )
+  const files = targetBranchFiles.filter((targetBranchFile) =>
+    incrementalFiles.some((incrementalFile) => incrementalFile.filename === targetBranchFile.filename)
+  );
 
   if (files.length === 0) {
-    warning('Skipped: files is null')
-    return
+    warning("Skipped: files is null");
+    return;
   }
 
   // skip files if they are filtered out
-  const filterSelectedFiles = []
-  const filterIgnoredFiles = []
+  const filterSelectedFiles = [];
+  const filterIgnoredFiles = [];
   for (const file of files) {
     if (!options.checkPath(file.filename)) {
-      info(`skip for excluded path: ${file.filename}`)
-      filterIgnoredFiles.push(file)
+      info(`skip for excluded path: ${file.filename}`);
+      filterIgnoredFiles.push(file);
     } else {
-      filterSelectedFiles.push(file)
+      filterSelectedFiles.push(file);
     }
   }
 
   if (filterSelectedFiles.length === 0) {
-    warning('Skipped: filterSelectedFiles is null')
-    return
+    warning("Skipped: filterSelectedFiles is null");
+    return;
   }
 
-  const commits = incrementalDiff.data.commits
+  const commits = incrementalDiff.data.commits;
 
   if (commits.length === 0) {
-    warning('Skipped: commits is null')
-    return
+    warning("Skipped: commits is null");
+    return;
   }
 
   // find hunks to review
-  const filteredFiles: Array<
-    [string, string, string, Array<[number, number, string]>] | null
-  > = await Promise.all(
-    filterSelectedFiles.map(file =>
+  const filteredFiles: Array<[string, string, string, Array<[number, number, string]>] | null> = await Promise.all(
+    filterSelectedFiles.map((file) =>
       githubConcurrencyLimit(async () => {
         // retrieve file contents
-        let fileContent = ''
+        let fileContent = "";
         if (context.payload.pull_request == null) {
-          warning('Skipped: context.payload.pull_request is null')
-          return null
+          warning("Skipped: context.payload.pull_request is null");
+          return null;
         }
         try {
           const contents = await octokit.repos.getContent({
             owner: repo.owner,
             repo: repo.repo,
             path: file.filename,
-            ref: context.payload.pull_request.base.sha
-          })
+            ref: context.payload.pull_request.base.sha,
+          });
           if (contents.data != null) {
             if (!Array.isArray(contents.data)) {
-              if (
-                contents.data.type === 'file' &&
-                contents.data.content != null
-              ) {
-                fileContent = Buffer.from(
-                  contents.data.content,
-                  'base64'
-                ).toString()
+              if (contents.data.type === "file" && contents.data.content != null) {
+                fileContent = Buffer.from(contents.data.content, "base64").toString();
               }
             }
           }
         } catch (e: any) {
-          warning(
-            `Failed to get file contents: ${
-              e as string
-            }. This is OK if it's a new file.`
-          )
+          warning(`Failed to get file contents: ${e as string}. This is OK if it's a new file.`);
         }
 
-        let fileDiff = ''
+        let fileDiff = "";
         if (file.patch != null) {
-          fileDiff = file.patch
+          fileDiff = file.patch;
         }
 
-        const patches: Array<[number, number, string]> = []
+        const patches: Array<[number, number, string]> = [];
         for (const patch of splitPatch(file.patch)) {
-          const patchLines = patchStartEndLine(patch)
+          const patchLines = patchStartEndLine(patch);
           if (patchLines == null) {
-            continue
+            continue;
           }
-          const hunks = parsePatch(patch)
+          const hunks = parsePatch(patch);
           if (hunks == null) {
-            continue
+            continue;
           }
           const hunksStr = `
 <new_hunk>
@@ -233,42 +205,29 @@ ${hunks.newHunk}
 ${hunks.oldHunk}
 \`\`\`
 </old_hunk>
-`
-          patches.push([
-            patchLines.newHunk.startLine,
-            patchLines.newHunk.endLine,
-            hunksStr
-          ])
+`;
+          patches.push([patchLines.newHunk.startLine, patchLines.newHunk.endLine, hunksStr]);
         }
         if (patches.length > 0) {
-          return [file.filename, fileContent, fileDiff, patches] as [
-            string,
-            string,
-            string,
-            Array<[number, number, string]>
-          ]
+          return [file.filename, fileContent, fileDiff, patches] as [string, string, string, Array<[number, number, string]>];
         } else {
-          return null
+          return null;
         }
       })
     )
-  )
+  );
 
   // Filter out any null results
-  const filesAndChanges = filteredFiles.filter(file => file !== null) as Array<
-    [string, string, string, Array<[number, number, string]>]
-  >
+  const filesAndChanges = filteredFiles.filter((file) => file !== null) as Array<[string, string, string, Array<[number, number, string]>]>;
 
   if (filesAndChanges.length === 0) {
-    error('Skipped: no files to review')
-    return
+    error("Skipped: no files to review");
+    return;
   }
 
   let statusMsg = `<details>
 <summary>Commits</summary>
-Files that changed from the base of the PR and between ${highestReviewedCommitId} and ${
-    context.payload.pull_request.head.sha
-  } commits.
+Files that changed from the base of the PR and between ${highestReviewedCommitId} and ${context.payload.pull_request.head.sha} commits.
 </details>
 ${
   filesAndChanges.length > 0
@@ -276,12 +235,10 @@ ${
 <details>
 <summary>Files selected (${filesAndChanges.length})</summary>
 
-* ${filesAndChanges
-        .map(([filename, , , patches]) => `${filename} (${patches.length})`)
-        .join('\n* ')}
+* ${filesAndChanges.map(([filename, , , patches]) => `${filename} (${patches.length})`).join("\n* ")}
 </details>
 `
-    : ''
+    : ""
 }
 ${
   filterIgnoredFiles.length > 0
@@ -289,164 +246,137 @@ ${
 <details>
 <summary>Files ignored due to filter (${filterIgnoredFiles.length})</summary>
 
-* ${filterIgnoredFiles.map(file => file.filename).join('\n* ')}
+* ${filterIgnoredFiles.map((file) => file.filename).join("\n* ")}
 
 </details>
 `
-    : ''
+    : ""
 }
-`
+`;
 
   // update the existing comment with in progress status
-  const inProgressSummarizeCmt = commenter.addInProgressStatus(
-    existingSummarizeCmtBody,
-    statusMsg
-  )
+  const inProgressSummarizeCmt = commenter.addInProgressStatus(existingSummarizeCmtBody, statusMsg);
 
   // add in progress status to the summarize comment
-  await commenter.comment(`${inProgressSummarizeCmt}`, SUMMARIZE_TAG, 'replace')
+  await commenter.comment(`${inProgressSummarizeCmt}`, SUMMARIZE_TAG, "replace");
 
-  const summariesFailed: string[] = []
+  const summariesFailed: string[] = [];
 
-  const doSummary = async (
-    filename: string,
-    fileContent: string,
-    fileDiff: string
-  ): Promise<[string, string, boolean] | null> => {
-    info(`summarize: ${filename}`)
-    const ins = inputs.clone()
+  const doSummary = async (filename: string, fileContent: string, fileDiff: string): Promise<[string, string, boolean] | null> => {
+    info(`summarize: ${filename}`);
+    const ins = inputs.clone();
     if (fileDiff.length === 0) {
-      warning(`summarize: file_diff is empty, skip ${filename}`)
-      summariesFailed.push(`${filename} (empty diff)`)
-      return null
+      warning(`summarize: file_diff is empty, skip ${filename}`);
+      summariesFailed.push(`${filename} (empty diff)`);
+      return null;
     }
 
-    ins.filename = filename
-    ins.fileDiff = fileDiff
+    ins.filename = filename;
+    ins.fileDiff = fileDiff;
 
     // render prompt based on inputs so far
-    const summarizePrompt = prompts.renderSummarizeFileDiff(
-      ins,
-      options.reviewSimpleChanges
-    )
-    const tokens = getTokenCount(summarizePrompt)
+    const summarizePrompt = prompts.renderSummarizeFileDiff(ins, options.reviewSimpleChanges);
+    const tokens = getTokenCount(summarizePrompt);
 
     if (tokens > options.lightTokenLimits.requestTokens) {
-      info(`summarize: diff tokens exceeds limit, skip ${filename}`)
-      summariesFailed.push(`${filename} (diff tokens exceeds limit)`)
-      return null
+      info(`summarize: diff tokens exceeds limit, skip ${filename}`);
+      summariesFailed.push(`${filename} (diff tokens exceeds limit)`);
+      return null;
     }
 
     // summarize content
     try {
-      const [summarizeResp] = await lightBot.chat(summarizePrompt)
+      const [summarizeResp] = await lightBot.chat(summarizePrompt);
 
-      if (summarizeResp === '') {
-        info('summarize: nothing obtained from bedrock')
-        summariesFailed.push(`${filename} (nothing obtained from bedrock)`)
-        return null
+      if (summarizeResp === "") {
+        info("summarize: nothing obtained from bedrock");
+        summariesFailed.push(`${filename} (nothing obtained from bedrock)`);
+        return null;
       } else {
         if (options.reviewSimpleChanges === false) {
           // parse the comment to look for triage classification
           // Format is : [TRIAGE]: <NEEDS_REVIEW or APPROVED>
           // if the change needs review return true, else false
-          const triageRegex = /\[TRIAGE\]:\s*(NEEDS_REVIEW|APPROVED)/
-          const triageMatch = summarizeResp.match(triageRegex)
+          const triageRegex = /\[TRIAGE\]:\s*(NEEDS_REVIEW|APPROVED)/;
+          const triageMatch = summarizeResp.match(triageRegex);
 
           if (triageMatch != null) {
-            const triage = triageMatch[1]
-            const needsReview = triage === 'NEEDS_REVIEW'
+            const triage = triageMatch[1];
+            const needsReview = triage === "NEEDS_REVIEW";
 
             // remove this line from the comment
-            const summary = summarizeResp.replace(triageRegex, '').trim()
-            info(`filename: ${filename}, triage: ${triage}`)
-            return [filename, summary, needsReview]
+            const summary = summarizeResp.replace(triageRegex, "").trim();
+            info(`filename: ${filename}, triage: ${triage}`);
+            return [filename, summary, needsReview];
           }
         }
-        return [filename, summarizeResp, true]
+        return [filename, summarizeResp, true];
       }
     } catch (e: any) {
-      warning(`summarize: error from bedrock: ${e as string}`)
-      summariesFailed.push(`${filename} (error from bedrock: ${e as string})})`)
-      return null
+      warning(`summarize: error from bedrock: ${e as string}`);
+      summariesFailed.push(`${filename} (error from bedrock: ${e as string})})`);
+      return null;
     }
-  }
+  };
 
-  const summaryPromises = []
-  const skippedFiles = []
+  const summaryPromises = [];
+  const skippedFiles = [];
   for (const [filename, fileContent, fileDiff] of filesAndChanges) {
     if (options.maxFiles <= 0 || summaryPromises.length < options.maxFiles) {
-      summaryPromises.push(
-        bedrockConcurrencyLimit(
-          async () => await doSummary(filename, fileContent, fileDiff)
-        )
-      )
+      summaryPromises.push(bedrockConcurrencyLimit(async () => await doSummary(filename, fileContent, fileDiff)));
     } else {
-      skippedFiles.push(filename)
+      skippedFiles.push(filename);
     }
   }
 
-  const summaries = (await Promise.all(summaryPromises)).filter(
-    summary => summary !== null
-  ) as Array<[string, string, boolean]>
+  const summaries = (await Promise.all(summaryPromises)).filter((summary) => summary !== null) as Array<[string, string, boolean]>;
 
   if (summaries.length > 0) {
-    const batchSize = 10
+    const batchSize = 10;
     // join summaries into one in the batches of batchSize
     // and ask the bot to summarize the summaries
     for (let i = 0; i < summaries.length; i += batchSize) {
-      const summariesBatch = summaries.slice(i, i + batchSize)
+      const summariesBatch = summaries.slice(i, i + batchSize);
       for (const [filename, summary] of summariesBatch) {
         inputs.rawSummary += `---
 ${filename}: ${summary}
-`
+`;
       }
       // ask Bedrock to summarize the summaries
-      const [summarizeResp] = await heavyBot.chat(
-        prompts.renderSummarizeChangesets(inputs)
-      )
-      if (summarizeResp === '') {
-        warning('summarize: nothing obtained from bedrock')
+      const [summarizeResp] = await heavyBot.chat(prompts.renderSummarizeChangesets(inputs));
+      if (summarizeResp === "") {
+        warning("summarize: nothing obtained from bedrock");
       } else {
-        inputs.rawSummary = summarizeResp
+        inputs.rawSummary = summarizeResp;
       }
     }
   }
 
   // final summary
-  const [summarizeFinalResponse] = await heavyBot.chat(
-    prompts.renderSummarize(inputs)
-  )
-  if (summarizeFinalResponse === '') {
-    info('summarize: nothing obtained from bedrock')
+  const [summarizeFinalResponse] = await heavyBot.chat(prompts.renderSummarize(inputs));
+  if (summarizeFinalResponse === "") {
+    info("summarize: nothing obtained from bedrock");
   }
 
   if (options.disableReleaseNotes === false) {
     // final release notes
-    const [releaseNotesResponse] = await heavyBot.chat(
-      prompts.renderSummarizeReleaseNotes(inputs)
-    )
-    if (releaseNotesResponse === '') {
-      info('release notes: nothing obtained from bedrock')
+    const [releaseNotesResponse] = await heavyBot.chat(prompts.renderSummarizeReleaseNotes(inputs));
+    if (releaseNotesResponse === "") {
+      info("release notes: nothing obtained from bedrock");
     } else {
-      let message = '### Summary (generated)\n\n'
-      message += releaseNotesResponse
+      let message = "### Summary (generated)\n\n";
+      message += releaseNotesResponse;
       try {
-        await commenter.updateDescription(
-          context.payload.pull_request.number,
-          message
-        )
+        await commenter.updateDescription(context.payload.pull_request.number, message);
       } catch (e: any) {
-        warning(`release notes: error from github: ${e.message as string}`)
+        warning(`release notes: error from github: ${e.message as string}`);
       }
     }
   }
 
   // generate a short summary as well
-  const [summarizeShortResponse] = await heavyBot.chat(
-    prompts.renderSummarizeShort(inputs)
-  )
-  inputs.shortSummary = summarizeShortResponse
+  const [summarizeShortResponse] = await heavyBot.chat(prompts.renderSummarizeShort(inputs));
+  inputs.shortSummary = summarizeShortResponse;
 
   let summarizeComment = `${summarizeFinalResponse}
 ${RAW_SUMMARY_START_TAG}
@@ -455,219 +385,170 @@ ${RAW_SUMMARY_END_TAG}
 ${SHORT_SUMMARY_START_TAG}
 ${inputs.shortSummary}
 ${SHORT_SUMMARY_END_TAG}
-`
+`;
 
   statusMsg += `
 ${
   skippedFiles.length > 0
     ? `
 <details>
-<summary>Files not processed due to max files limit (${
-        skippedFiles.length
-      })</summary>
+<summary>Files not processed due to max files limit (${skippedFiles.length})</summary>
 
-* ${skippedFiles.join('\n* ')}
+* ${skippedFiles.join("\n* ")}
 
 </details>
 `
-    : ''
+    : ""
 }
 ${
   summariesFailed.length > 0
     ? `
 <details>
-<summary>Files not summarized due to errors (${
-        summariesFailed.length
-      })</summary>
+<summary>Files not summarized due to errors (${summariesFailed.length})</summary>
 
-* ${summariesFailed.join('\n* ')}
+* ${summariesFailed.join("\n* ")}
 
 </details>
 `
-    : ''
+    : ""
 }
-`
+`;
 
   if (!options.disableReview) {
     const filesAndChangesReview = filesAndChanges.filter(([filename]) => {
-      const needsReview =
-        summaries.find(
-          ([summaryFilename]) => summaryFilename === filename
-        )?.[2] ?? true
-      return needsReview
-    })
+      const needsReview = summaries.find(([summaryFilename]) => summaryFilename === filename)?.[2] ?? true;
+      return needsReview;
+    });
 
     const reviewsSkipped = filesAndChanges
-      .filter(
-        ([filename]) =>
-          !filesAndChangesReview.some(
-            ([reviewFilename]) => reviewFilename === filename
-          )
-      )
-      .map(([filename]) => filename)
+      .filter(([filename]) => !filesAndChangesReview.some(([reviewFilename]) => reviewFilename === filename))
+      .map(([filename]) => filename);
 
     // failed reviews array
-    const reviewsFailed: string[] = []
-    let lgtmCount = 0
-    let reviewCount = 0
-    const doReview = async (
-      filename: string,
-      fileContent: string,
-      patches: Array<[number, number, string]>
-    ): Promise<void> => {
-      info(`reviewing ${filename}`)
+    const reviewsFailed: string[] = [];
+    let lgtmCount = 0;
+    let reviewCount = 0;
+    const doReview = async (filename: string, fileContent: string, patches: Array<[number, number, string]>): Promise<void> => {
+      info(`reviewing ${filename}`);
       // make a copy of inputs
-      const ins: Inputs = inputs.clone()
-      ins.filename = filename
+      const ins: Inputs = inputs.clone();
+      ins.filename = filename;
 
       // calculate tokens based on inputs so far
-      let tokens = getTokenCount(prompts.renderReviewFileDiff(ins))
+      let tokens = getTokenCount(prompts.renderReviewFileDiff(ins));
       // loop to calculate total patch tokens
-      let patchesToPack = 0
+      let patchesToPack = 0;
       for (const [, , patch] of patches) {
-        const patchTokens = getTokenCount(patch)
+        const patchTokens = getTokenCount(patch);
         if (tokens + patchTokens > options.heavyTokenLimits.requestTokens) {
-          info(
-            `only packing ${patchesToPack} / ${patches.length} patches, tokens: ${tokens} / ${options.heavyTokenLimits.requestTokens}`
-          )
-          break
+          info(`only packing ${patchesToPack} / ${patches.length} patches, tokens: ${tokens} / ${options.heavyTokenLimits.requestTokens}`);
+          break;
         }
-        tokens += patchTokens
-        patchesToPack += 1
+        tokens += patchTokens;
+        patchesToPack += 1;
       }
 
-      let patchesPacked = 0
+      let patchesPacked = 0;
       for (const [startLine, endLine, patch] of patches) {
         if (context.payload.pull_request == null) {
-          warning('No pull request found, skipping.')
-          continue
+          warning("No pull request found, skipping.");
+          continue;
         }
         // see if we can pack more patches into this request
         if (patchesPacked >= patchesToPack) {
-          info(
-            `unable to pack more patches into this request, packed: ${patchesPacked}, total patches: ${patches.length}, skipping.`
-          )
+          info(`unable to pack more patches into this request, packed: ${patchesPacked}, total patches: ${patches.length}, skipping.`);
           if (options.debug) {
-            info(`prompt so far: ${prompts.renderReviewFileDiff(ins)}`)
+            info(`prompt so far: ${prompts.renderReviewFileDiff(ins)}`);
           }
-          break
+          break;
         }
-        patchesPacked += 1
+        patchesPacked += 1;
 
-        let commentChain = ''
+        let commentChain = "";
         try {
-          const allChains = await commenter.getCommentChainsWithinRange(
-            context.payload.pull_request.number,
-            filename,
-            startLine,
-            endLine,
-            COMMENT_REPLY_TAG
-          )
+          const allChains = await commenter.getCommentChainsWithinRange(context.payload.pull_request.number, filename, startLine, endLine, COMMENT_REPLY_TAG);
 
           if (allChains.length > 0) {
-            info(`Found comment chains: ${allChains} for ${filename}`)
-            commentChain = allChains
+            info(`Found comment chains: ${allChains} for ${filename}`);
+            commentChain = allChains;
           }
         } catch (e: any) {
-          warning(
-            `Failed to get comments: ${e as string}, skipping. backtrace: ${
-              e.stack as string
-            }`
-          )
+          warning(`Failed to get comments: ${e as string}, skipping. backtrace: ${e.stack as string}`);
         }
         // try packing comment_chain into this request
-        const commentChainTokens = getTokenCount(commentChain)
-        if (
-          tokens + commentChainTokens >
-          options.heavyTokenLimits.requestTokens
-        ) {
-          commentChain = ''
+        const commentChainTokens = getTokenCount(commentChain);
+        if (tokens + commentChainTokens > options.heavyTokenLimits.requestTokens) {
+          commentChain = "";
         } else {
-          tokens += commentChainTokens
+          tokens += commentChainTokens;
         }
 
         ins.patches += `
 ${patch}
-`
-        if (commentChain !== '') {
+`;
+        if (commentChain !== "") {
           ins.patches += `
 <comment_chains>
 \`\`\`
 ${commentChain}
 \`\`\`
 </comment_chains>
-`
+`;
         }
       }
 
       if (patchesPacked > 0) {
         // perform review
         try {
-          const [response] = await heavyBot.chat(
-            prompts.renderReviewFileDiff(ins),
-            '{'
-          )
-          if (response === '') {
-            info('review: nothing obtained from bedrock')
-            reviewsFailed.push(`${filename} (no response)`)
-            return
+          const [response] = await heavyBot.chat(prompts.renderReviewFileDiff(ins), "{");
+          if (response === "") {
+            info("review: nothing obtained from bedrock");
+            reviewsFailed.push(`${filename} (no response)`);
+            return;
           }
           // parse review
-          const reviews = parseReview(response, patches)
+          const reviews = parseReview(response, patches);
           for (const review of reviews) {
             // check for LGTM
-            if (
-              !options.reviewCommentLGTM &&
-              (review.comment.includes('LGTM') ||
-                review.comment.includes('looks good to me'))
-            ) {
-              lgtmCount += 1
-              continue
+            if (!options.reviewCommentLGTM && (review.comment.includes("LGTM") || review.comment.includes("looks good to me"))) {
+              lgtmCount += 1;
+              continue;
             }
             if (context.payload.pull_request == null) {
-              warning('No pull request found, skipping.')
-              continue
+              warning("No pull request found, skipping.");
+              continue;
             }
 
             try {
-              reviewCount += 1
-              await commenter.bufferReviewComment(
-                filename,
-                review.startLine,
-                review.endLine,
-                `${review.comment}`
-              )
+              reviewCount += 1;
+              await commenter.bufferReviewComment(filename, review.startLine, review.endLine, `${review.comment}`);
             } catch (e: any) {
-              reviewsFailed.push(`${filename} comment failed (${e as string})`)
+              reviewsFailed.push(`${filename} comment failed (${e as string})`);
             }
           }
         } catch (e: any) {
-          warning(
-            `Failed to review: ${e as string}, skipping. backtrace: ${
-              e.stack as string
-            }`
-          )
-          reviewsFailed.push(`${filename} (${e as string})`)
+          warning(`Failed to review: ${e as string}, skipping. backtrace: ${e.stack as string}`);
+          reviewsFailed.push(`${filename} (${e as string})`);
         }
       } else {
-        reviewsSkipped.push(`${filename} (diff too large)`)
+        reviewsSkipped.push(`${filename} (diff too large)`);
       }
-    }
+    };
 
-    const reviewPromises = []
+    const reviewPromises = [];
     for (const [filename, fileContent, , patches] of filesAndChangesReview) {
       if (options.maxFiles <= 0 || reviewPromises.length < options.maxFiles) {
         reviewPromises.push(
           bedrockConcurrencyLimit(async () => {
-            await doReview(filename, fileContent, patches)
+            await doReview(filename, fileContent, patches);
           })
-        )
+        );
       } else {
-        skippedFiles.push(filename)
+        skippedFiles.push(filename);
       }
     }
 
-    await Promise.all(reviewPromises)
+    await Promise.all(reviewPromises);
 
     statusMsg += `
 ${
@@ -675,24 +556,22 @@ ${
     ? `<details>
 <summary>Files not reviewed due to errors (${reviewsFailed.length})</summary>
 
-* ${reviewsFailed.join('\n* ')}
+* ${reviewsFailed.join("\n* ")}
 
 </details>
 `
-    : ''
+    : ""
 }
 ${
   reviewsSkipped.length > 0
     ? `<details>
-<summary>Files skipped from review due to trivial changes (${
-        reviewsSkipped.length
-      })</summary>
+<summary>Files skipped from review due to trivial changes (${reviewsSkipped.length})</summary>
 
-* ${reviewsSkipped.join('\n* ')}
+* ${reviewsSkipped.join("\n* ")}
 
 </details>
 `
-    : ''
+    : ""
 }
 <details>
 <summary>Review comments generated (${reviewCount + lgtmCount})</summary>
@@ -719,137 +598,125 @@ ${
 - Add \`/reviewbot: ignore\` anywhere in the PR description to pause further reviews from the bot.
 
 </details>
-`
+`;
     // add existing_comment_ids_block with latest head sha
-    summarizeComment += `\n${commenter.addReviewedCommitId(
-      existingCommitIdsBlock,
-      context.payload.pull_request.head.sha
-    )}`
+    summarizeComment += `\n${commenter.addReviewedCommitId(existingCommitIdsBlock, context.payload.pull_request.head.sha)}`;
 
     // post the review
-    await commenter.submitReview(
-      context.payload.pull_request.number,
-      commits[commits.length - 1].sha,
-      statusMsg
-    )
+    await commenter.submitReview(context.payload.pull_request.number, commits[commits.length - 1].sha, statusMsg);
   }
 
   // post the final summary comment
-  await commenter.comment(`${summarizeComment}`, SUMMARIZE_TAG, 'replace')
-}
+  await commenter.comment(`${summarizeComment}`, SUMMARIZE_TAG, "replace");
+};
 
 const splitPatch = (patch: string | null | undefined): string[] => {
   if (patch == null) {
-    return []
+    return [];
   }
 
-  const pattern = /(^@@ -(\d+),(\d+) \+(\d+),(\d+) @@).*$/gm
+  const pattern = /(^@@ -(\d+),(\d+) \+(\d+),(\d+) @@).*$/gm;
 
-  const result: string[] = []
-  let last = -1
-  let match: RegExpExecArray | null
+  const result: string[] = [];
+  let last = -1;
+  let match: RegExpExecArray | null;
   while ((match = pattern.exec(patch)) !== null) {
     if (last === -1) {
-      last = match.index
+      last = match.index;
     } else {
-      result.push(patch.substring(last, match.index))
-      last = match.index
+      result.push(patch.substring(last, match.index));
+      last = match.index;
     }
   }
   if (last !== -1) {
-    result.push(patch.substring(last))
+    result.push(patch.substring(last));
   }
-  return result
-}
+  return result;
+};
 
 const patchStartEndLine = (
   patch: string
 ): {
-  oldHunk: {startLine: number; endLine: number}
-  newHunk: {startLine: number; endLine: number}
+  oldHunk: { startLine: number; endLine: number };
+  newHunk: { startLine: number; endLine: number };
 } | null => {
-  const pattern = /(^@@ -(\d+),(\d+) \+(\d+),(\d+) @@)/gm
-  const match = pattern.exec(patch)
+  const pattern = /(^@@ -(\d+),(\d+) \+(\d+),(\d+) @@)/gm;
+  const match = pattern.exec(patch);
   if (match != null) {
-    const oldBegin = parseInt(match[2])
-    const oldDiff = parseInt(match[3])
-    const newBegin = parseInt(match[4])
-    const newDiff = parseInt(match[5])
+    const oldBegin = parseInt(match[2]);
+    const oldDiff = parseInt(match[3]);
+    const newBegin = parseInt(match[4]);
+    const newDiff = parseInt(match[5]);
     return {
       oldHunk: {
         startLine: oldBegin,
-        endLine: oldBegin + oldDiff - 1
+        endLine: oldBegin + oldDiff - 1,
       },
       newHunk: {
         startLine: newBegin,
-        endLine: newBegin + newDiff - 1
-      }
-    }
+        endLine: newBegin + newDiff - 1,
+      },
+    };
   } else {
-    return null
+    return null;
   }
-}
+};
 
-const parsePatch = (
-  patch: string
-): {oldHunk: string; newHunk: string} | null => {
-  const hunkInfo = patchStartEndLine(patch)
+const parsePatch = (patch: string): { oldHunk: string; newHunk: string } | null => {
+  const hunkInfo = patchStartEndLine(patch);
   if (hunkInfo == null) {
-    return null
+    return null;
   }
 
-  const oldHunkLines: string[] = []
-  const newHunkLines: string[] = []
+  const oldHunkLines: string[] = [];
+  const newHunkLines: string[] = [];
 
-  let newLine = hunkInfo.newHunk.startLine
+  let newLine = hunkInfo.newHunk.startLine;
 
-  const lines = patch.split('\n').slice(1) // Skip the @@ line
+  const lines = patch.split("\n").slice(1); // Skip the @@ line
 
   // Remove the last line if it's empty
-  if (lines[lines.length - 1] === '') {
-    lines.pop()
+  if (lines[lines.length - 1] === "") {
+    lines.pop();
   }
 
   // Skip annotations for the first 3 and last 3 lines
-  const skipStart = 3
-  const skipEnd = 3
+  const skipStart = 3;
+  const skipEnd = 3;
 
-  let currentLine = 0
+  let currentLine = 0;
 
-  const removalOnly = !lines.some(line => line.startsWith('+'))
+  const removalOnly = !lines.some((line) => line.startsWith("+"));
 
   for (const line of lines) {
-    currentLine++
-    if (line.startsWith('-')) {
-      oldHunkLines.push(`${line.substring(1)}`)
-    } else if (line.startsWith('+')) {
-      newHunkLines.push(`${newLine}: ${line.substring(1)}`)
-      newLine++
+    currentLine++;
+    if (line.startsWith("-")) {
+      oldHunkLines.push(`${line.substring(1)}`);
+    } else if (line.startsWith("+")) {
+      newHunkLines.push(`${newLine}: ${line.substring(1)}`);
+      newLine++;
     } else {
       // context line
-      oldHunkLines.push(`${line}`)
-      if (
-        removalOnly ||
-        (currentLine > skipStart && currentLine <= lines.length - skipEnd)
-      ) {
-        newHunkLines.push(`${newLine}: ${line}`)
+      oldHunkLines.push(`${line}`);
+      if (removalOnly || (currentLine > skipStart && currentLine <= lines.length - skipEnd)) {
+        newHunkLines.push(`${newLine}: ${line}`);
       } else {
-        newHunkLines.push(`${line}`)
+        newHunkLines.push(`${line}`);
       }
-      newLine++
+      newLine++;
     }
   }
 
   return {
-    oldHunk: oldHunkLines.join('\n'),
-    newHunk: newHunkLines.join('\n')
-  }
-}
+    oldHunk: oldHunkLines.join("\n"),
+    newHunk: newHunkLines.join("\n"),
+  };
+};
 
 interface Review {
-  startLine: number
-  endLine: number
-  comment: string
+  startLine: number;
+  endLine: number;
+  comment: string;
 }
 
 function parseReview(
@@ -857,23 +724,23 @@ function parseReview(
   // eslint-disable-next-line no-unused-vars
   patches: Array<[number, number, string]>
 ): Review[] {
-  const reviews: Review[] = []
+  const reviews: Review[] = [];
 
   try {
-    const rawReviews = JSON.parse(response).reviews
+    const rawReviews = JSON.parse(response).reviews;
     for (const r of rawReviews) {
       if (r.comment) {
         reviews.push({
           startLine: r.line_start ?? 0,
           endLine: r.line_end ?? 0,
-          comment: r.comment
-        })
+          comment: r.comment,
+        });
       }
     }
   } catch (e: any) {
-    error(e.message)
-    return []
+    error(e.message);
+    return [];
   }
 
-  return reviews
+  return reviews;
 }
