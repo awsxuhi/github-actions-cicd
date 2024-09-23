@@ -45,7 +45,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   // 或者使用 console.dir 打印出对象的完整结构
   // depth: null：确保显示对象的所有嵌套层级，打印出完整的结构。
   // colors: true：让终端输出的结果带有颜色，方便阅读。
-  console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.pull_request: <review/codeReview(), console.dir()>");
+  console.log("\n\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.pull_request: <review/codeReview(), console.dir()>");
   console.group("context.payload.pull_request");
   console.dir(context.payload.pull_request, { depth: 1, colors: true });
   console.groupEnd();
@@ -71,7 +71,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   let existingSummarizeCmtBody = "";
   if (existingSummarizeCmt != null) {
     existingSummarizeCmtBody = existingSummarizeCmt.body;
-    console.log("\n\x1b[36m%s\x1b[0m", "Printing existingSummarizeCmtBody = existingSummarizeCmt.body: <review/codeReview()>");
+    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing existingSummarizeCmtBody = existingSummarizeCmt.body: <review/codeReview()>");
     console.dir(existingSummarizeCmtBody, { depth: null, colors: true });
     inputs.rawSummary = commenter.getRawSummary(existingSummarizeCmtBody);
     inputs.shortSummary = commenter.getShortSummary(existingSummarizeCmtBody);
@@ -99,6 +99,8 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     base: highestReviewedCommitId,
     head: context.payload.pull_request.head.sha,
   });
+  console.log("\n\n\x1b[36m%s\x1b[0m", "Printing incrementalDiff (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>");
+  console.dir(incrementalDiff, { depth: null, colors: true });
 
   // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
   const targetBranchDiff = await octokit.repos.compareCommits({
@@ -107,6 +109,11 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     base: context.payload.pull_request.base.sha,
     head: context.payload.pull_request.head.sha,
   });
+  console.log(
+    "\n\n\x1b[36m%s\x1b[0m",
+    "Printing targetBranchDiff (context.payload.pull_request.base.sha vs. context.payload.pull_request.head.sha): <review/codeReview()>"
+  );
+  console.dir(targetBranchDiff, { depth: 1, colors: true });
 
   const incrementalFiles = incrementalDiff.data.files;
   const targetBranchFiles = targetBranchDiff.data.files;

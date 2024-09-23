@@ -87112,6 +87112,7 @@ ${chain}
     // function that takes a comment body and returns the list of commit ids that have been reviewed
     // commit ids are comments between the commit_ids_reviewed_start and commit_ids_reviewed_end markers
     // <!-- [commit_id] -->
+    // from <!-- 22c58c3c379401b52641c7d75b008325a4471d3e --> to 22c58c3c379401b52641c7d75b008325a4471d3e
     getReviewedCommitIds(commentBody) {
         const start = commentBody.indexOf(COMMIT_ID_START_TAG);
         const end = commentBody.indexOf(COMMIT_ID_END_TAG);
@@ -87155,6 +87156,7 @@ ${chain}
         }
         return "";
     }
+    // allCommits 数组获取的是与某个具体的 Pull Request (PR) 相关的提交记录，而不是仓库中所有的提交。最终生成的 allCommits 数组中，最早的提交在前，最新的提交在最后。
     async getAllCommitIds() {
         const allCommits = [];
         let page = 1;
@@ -93998,7 +94000,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
     // 或者使用 console.dir 打印出对象的完整结构
     // depth: null：确保显示对象的所有嵌套层级，打印出完整的结构。
     // colors: true：让终端输出的结果带有颜色，方便阅读。
-    console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.pull_request: <review/codeReview(), console.dir()>");
+    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.pull_request: <review/codeReview(), console.dir()>");
     console.group("context.payload.pull_request");
     console.dir(context.payload.pull_request, { depth: 1, colors: true });
     console.groupEnd();
@@ -94020,7 +94022,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
     let existingSummarizeCmtBody = "";
     if (existingSummarizeCmt != null) {
         existingSummarizeCmtBody = existingSummarizeCmt.body;
-        console.log("\n\x1b[36m%s\x1b[0m", "Printing existingSummarizeCmtBody = existingSummarizeCmt.body: <review/codeReview()>");
+        console.log("\n\n\x1b[36m%s\x1b[0m", "Printing existingSummarizeCmtBody = existingSummarizeCmt.body: <review/codeReview()>");
         console.dir(existingSummarizeCmtBody, { depth: null, colors: true });
         inputs.rawSummary = commenter.getRawSummary(existingSummarizeCmtBody);
         inputs.shortSummary = commenter.getShortSummary(existingSummarizeCmtBody);
@@ -94046,6 +94048,8 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         base: highestReviewedCommitId,
         head: context.payload.pull_request.head.sha,
     });
+    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing incrementalDiff (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>");
+    console.dir(incrementalDiff, { depth: null, colors: true });
     // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
     const targetBranchDiff = await octokit/* octokit.repos.compareCommits */.K.repos.compareCommits({
         owner: repo.owner,
@@ -94053,6 +94057,8 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         base: context.payload.pull_request.base.sha,
         head: context.payload.pull_request.head.sha,
     });
+    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing targetBranchDiff (context.payload.pull_request.base.sha vs. context.payload.pull_request.head.sha): <review/codeReview()>");
+    console.dir(targetBranchDiff, { depth: 1, colors: true });
     const incrementalFiles = incrementalDiff.data.files;
     const targetBranchFiles = targetBranchDiff.data.files;
     if (incrementalFiles == null || targetBranchFiles == null) {

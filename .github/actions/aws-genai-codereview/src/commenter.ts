@@ -586,6 +586,7 @@ ${chain}
   // function that takes a comment body and returns the list of commit ids that have been reviewed
   // commit ids are comments between the commit_ids_reviewed_start and commit_ids_reviewed_end markers
   // <!-- [commit_id] -->
+  // from <!-- 22c58c3c379401b52641c7d75b008325a4471d3e --> to 22c58c3c379401b52641c7d75b008325a4471d3e
   getReviewedCommitIds(commentBody: string): string[] {
     const start = commentBody.indexOf(COMMIT_ID_START_TAG);
     const end = commentBody.indexOf(COMMIT_ID_END_TAG);
@@ -633,6 +634,7 @@ ${chain}
     return "";
   }
 
+  // allCommits 数组获取的是与某个具体的 Pull Request (PR) 相关的提交记录，而不是仓库中所有的提交。最终生成的 allCommits 数组中，最早的提交在前，最新的提交在最后。
   async getAllCommitIds(): Promise<string[]> {
     const allCommits = [];
     let page = 1;
