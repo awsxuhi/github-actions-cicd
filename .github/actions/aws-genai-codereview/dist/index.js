@@ -86471,7 +86471,7 @@ class Bot {
         this.client = new dist_cjs.BedrockRuntimeClient({});
     }
     chat = async (message, prefix) => {
-        let res = ['', {}];
+        let res = ["", {}];
         try {
             res = await this.chat_(message, prefix);
             return res;
@@ -86481,11 +86481,11 @@ class Bot {
             return res;
         }
     };
-    chat_ = async (message, prefix = '') => {
+    chat_ = async (message, prefix = "") => {
         // record timing
         const start = Date.now();
         if (!message) {
-            return ['', {}];
+            return ["", {}];
         }
         let response;
         message = `IMPORTANT: Entire response must be in the language with ISO code: ${this.options.language}\n\n${message}`;
@@ -86497,60 +86497,60 @@ class Bot {
                 modelId: this.bedrockOptions.model,
                 body: JSON.stringify({
                     // eslint-disable-next-line camelcase
-                    anthropic_version: 'bedrock-2023-05-31',
+                    anthropic_version: "bedrock-2023-05-31",
                     // eslint-disable-next-line camelcase
                     max_tokens: 4096,
                     temperature: 0,
                     messages: [
                         {
-                            role: 'user',
+                            role: "user",
                             content: [
                                 {
-                                    type: 'text',
-                                    text: message
-                                }
-                            ]
+                                    type: "text",
+                                    text: message,
+                                },
+                            ],
                         },
                         ...(prefix
                             ? [
                                 {
-                                    role: 'assistant',
+                                    role: "assistant",
                                     content: [
                                         {
-                                            type: 'text',
-                                            text: prefix
-                                        }
-                                    ]
-                                }
+                                            type: "text",
+                                            text: prefix,
+                                        },
+                                    ],
+                                },
                             ]
-                            : [])
-                    ]
+                            : []),
+                    ],
                 }),
-                contentType: 'application/json',
-                accept: 'application/json'
+                contentType: "application/json",
+                accept: "application/json",
             })), {
-                retries: this.options.bedrockRetries
+                retries: this.options.bedrockRetries,
             });
         }
         catch (e) {
             (0,core.info)(`response: ${response}, failed to send message to bedrock: ${e}`);
         }
         const end = Date.now();
+        (0,core.info)(`response: ${JSON.stringify(response)}`);
         (0,core.info)(`bedrock sendMessage (including retries) response time: ${end - start} ms`);
-        let responseText = '';
+        let responseText = "";
         if (response != null) {
-            responseText = JSON.parse(Buffer.from(response.body).toString('utf-8'))
-                .content?.[0]?.text;
+            responseText = JSON.parse(Buffer.from(response.body).toString("utf-8")).content?.[0]?.text;
         }
         else {
-            (0,core.warning)('bedrock response is null');
+            (0,core.warning)("bedrock response is null");
         }
         if (this.options.debug) {
             (0,core.info)(`bedrock responses: ${responseText}\n-----------`);
         }
         const newIds = {
             parentMessageId: response?.$metadata.requestId,
-            conversationId: response?.$metadata.cfId
+            conversationId: response?.$metadata.cfId,
         };
         return [prefix + responseText, newIds];
     };
@@ -87235,10 +87235,12 @@ __nccwpck_require__.r(__webpack_exports__);
 
 
 async function run() {
-    const options = new _options__WEBPACK_IMPORTED_MODULE_2__/* .Options */ .Ei((0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getBooleanInput)('debug'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getBooleanInput)('disable_review'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getBooleanInput)('disable_release_notes'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getBooleanInput)('only_allow_collaborator'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('max_files'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getBooleanInput)('review_simple_changes'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getBooleanInput)('review_comment_lgtm'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getMultilineInput)('path_filters'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('system_message'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('review_file_diff'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('bedrock_light_model'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('bedrock_heavy_model'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('bedrock_model_temperature'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('bedrock_retries'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('bedrock_timeout_ms'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('bedrock_concurrency_limit'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('github_concurrency_limit'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('language'));
-    // print options
+    const options = new _options__WEBPACK_IMPORTED_MODULE_2__/* .Options */ .Ei((0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getBooleanInput)("debug"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getBooleanInput)("disable_review"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getBooleanInput)("disable_release_notes"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getBooleanInput)("only_allow_collaborator"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("max_files"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getBooleanInput)("review_simple_changes"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getBooleanInput)("review_comment_lgtm"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getMultilineInput)("path_filters"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("system_message"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("review_file_diff"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("bedrock_light_model"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("bedrock_heavy_model"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("bedrock_model_temperature"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("bedrock_retries"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("bedrock_timeout_ms"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("bedrock_concurrency_limit"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("github_concurrency_limit"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("language"));
+    /**
+     * Print options. This will display all the parameter values passed into the action through the `with` section of the GitHub workflow file.
+     */
     options.print();
-    const prompts = new _prompts__WEBPACK_IMPORTED_MODULE_6__/* .Prompts */ .j((0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('summarize'), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('summarize_release_notes'));
+    const prompts = new _prompts__WEBPACK_IMPORTED_MODULE_6__/* .Prompts */ .j((0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("summarize"), (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("summarize_release_notes"));
     // Create two bots, one for summary and one for review
     let lightBot = null;
     try {
@@ -87257,26 +87259,23 @@ async function run() {
         return;
     }
     try {
-        if (process.env.GITHUB_ACTOR === undefined ||
-            process.env.GITHUB_REPOSITORY === undefined) {
-            (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)('Skipped: required environment variables not found.');
+        if (process.env.GITHUB_ACTOR === undefined || process.env.GITHUB_REPOSITORY === undefined) {
+            (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)("Skipped: required environment variables not found.");
             return;
         }
-        if (options.onlyAllowCollaborator &&
-            !(await (0,_permission__WEBPACK_IMPORTED_MODULE_5__/* .isCollaborator */ .m)(process.env.GITHUB_ACTOR, process.env.GITHUB_REPOSITORY))) {
+        if (options.onlyAllowCollaborator && !(await (0,_permission__WEBPACK_IMPORTED_MODULE_5__/* .isCollaborator */ .m)(process.env.GITHUB_ACTOR, process.env.GITHUB_REPOSITORY))) {
             (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)(`Skipped: The user ${process.env.GITHUB_ACTOR} does not have collaborator access for the repository ${process.env.GITHUB_REPOSITORY}.`);
             return;
         }
         // check if the event is pull_request
-        if (process.env.GITHUB_EVENT_NAME === 'pull_request' ||
-            process.env.GITHUB_EVENT_NAME === 'pull_request_target') {
+        if (process.env.GITHUB_EVENT_NAME === "pull_request" || process.env.GITHUB_EVENT_NAME === "pull_request_target") {
             await (0,_review__WEBPACK_IMPORTED_MODULE_3__/* .codeReview */ .z)(lightBot, heavyBot, options, prompts);
         }
-        else if (process.env.GITHUB_EVENT_NAME === 'pull_request_review_comment') {
+        else if (process.env.GITHUB_EVENT_NAME === "pull_request_review_comment") {
             await (0,_review_comment__WEBPACK_IMPORTED_MODULE_4__/* .handleReviewComment */ .V)(heavyBot, options, prompts);
         }
         else {
-            (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)('Skipped: this action only works on push events or pull_request');
+            (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)("Skipped: this action only works on push events or pull_request");
         }
     }
     catch (e) {
@@ -87289,10 +87288,10 @@ async function run() {
     }
 }
 process
-    .on('unhandledRejection', (reason, p) => {
+    .on("unhandledRejection", (reason, p) => {
     (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)(`Unhandled Rejection at Promise: ${reason}, promise is ${p}`);
 })
-    .on('uncaughtException', (e) => {
+    .on("uncaughtException", (e) => {
     (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)(`Uncaught Exception thrown: ${e}, backtrace: ${e.stack}`);
 });
 await run();
@@ -93132,22 +93131,35 @@ class TokenLimits {
     maxTokens;
     requestTokens;
     responseTokens;
-    constructor(model = 'anthropic.claude-instant-v1') {
-        if (model === 'anthropic.claude-instant-v1') {
-            this.maxTokens = 100_000;
-            this.responseTokens = 4000;
-        }
-        else if (model === 'anthropic.claude-v2') {
-            this.maxTokens = 100_000;
-            this.responseTokens = 3000;
-        }
-        else {
-            // The latest models usually have this level of limits.
-            this.maxTokens = 200_000;
-            this.responseTokens = 4096;
+    constructor(model = "anthropic.claude-instant-v1") {
+        switch (model) {
+            case "anthropic.claude-instant-v1":
+                this.maxTokens = 100_000;
+                this.responseTokens = 4000; // 4096
+                break;
+            case "anthropic.claude-v2":
+                this.maxTokens = 100_000;
+                this.responseTokens = 4000; // 4096
+                break;
+            case "anthropic.claude-v2:1":
+                this.maxTokens = 200_000;
+                this.responseTokens = 4000; // 4096
+                break;
+            case "anthropic.claude-3-haiku-20240307-v1:0":
+                this.maxTokens = 200_000;
+                this.responseTokens = 4000; // 4096
+                break;
+            case "anthropic.claude-3-sonnet-20240229-v1:0":
+                this.maxTokens = 200_000;
+                this.responseTokens = 4000; // 4096
+                break;
+            default:
+                this.maxTokens = 200_000;
+                this.responseTokens = 4000;
+                break;
         }
         // provide some margin for the request tokens
-        this.requestTokens = this.maxTokens - this.responseTokens - 100;
+        this.requestTokens = this.maxTokens - this.responseTokens - 200;
     }
     string() {
         return `max_tokens=${this.maxTokens}, request_tokens=${this.requestTokens}, response_tokens=${this.responseTokens}`;
@@ -93158,6 +93170,7 @@ class TokenLimits {
 
 
 
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 class Options {
     debug;
     disableReview;
@@ -93203,6 +93216,8 @@ class Options {
     }
     // print all options using core.info
     print() {
+        console.log("\x1b[36m%s\x1b[0m", "Printing options... <options.print()>");
+        (0,core.info)(`Printing options... <options.print()>`);
         (0,core.info)(`debug: ${this.debug}`);
         (0,core.info)(`disable_review: ${this.disableReview}`);
         (0,core.info)(`disable_release_notes: ${this.disableReleaseNotes}`);
@@ -93230,8 +93245,11 @@ class Options {
         return ok;
     }
 }
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 class PathFilter {
     rules;
+    // 如果规则以 ! 开头，表示这是一个排除规则，去掉 !，然后将规则和 true （代表排除规则）存入 rules 数组。
+    // 如果规则不是以 ! 开头，则它是包含规则，将规则和 false 存入数组，表示这是一个包含规则。
     constructor(rules = null) {
         this.rules = [];
         if (rules != null) {
@@ -93260,22 +93278,24 @@ class PathFilter {
         let included = false;
         let excluded = false;
         let inclusionRuleExists = false;
-        for (const [rule, exclude] of this.rules) {
+        for (const [rule, isExclude] of this.rules) {
             if (minimatch(path, rule)) {
-                if (exclude) {
+                if (isExclude) {
                     excluded = true;
                 }
                 else {
                     included = true;
                 }
             }
-            if (!exclude) {
+            if (!isExclude) {
                 inclusionRuleExists = true;
             }
         }
+        // 如果不存在包含规则，或者路径匹配了至少一个包含规则并且没有被任何排除规则排除，返回 true，表示路径应该被处理。否则，返回 false，表示路径应该被忽略。
         return (!inclusionRuleExists || included) && !excluded;
     }
 }
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 class BedrockOptions {
     model;
     tokenLimits;
