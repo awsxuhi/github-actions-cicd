@@ -70,7 +70,7 @@ export class Options {
   // print all options using core.info
   print(): void {
     console.log("\x1b[36m%s\x1b[0m", "Printing options... <options.print()>");
-    info(`Printing options... <options.print()>`);
+    info(`\x1b[36mPrinting options... <options.print()>\x1b[0m`);
     info(`debug: ${this.debug}`);
     info(`disable_review: ${this.disableReview}`);
     info(`disable_release_notes: ${this.disableReleaseNotes}`);
