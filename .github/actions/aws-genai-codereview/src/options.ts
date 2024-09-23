@@ -90,6 +90,7 @@ export class Options {
     info(`summary_token_limits: ${this.lightTokenLimits.string()}`);
     info(`review_token_limits: ${this.heavyTokenLimits.string()}`);
     info(`language: ${this.language}`);
+    console.log("\x1b[36m%s\x1b[0m\n", "End of Printing options... <options.print()>");
   }
 
   checkPath(path: string): boolean {

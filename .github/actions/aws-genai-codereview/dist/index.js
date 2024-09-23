@@ -87280,6 +87280,11 @@ async function run() {
     }
     catch (e) {
         if (e instanceof Error) {
+            /**
+             * setFailed 是 GitHub Actions 中 @actions/core 模块的一个方法，主要用于将当前 GitHub Action 的状态标记为失败。
+             * 一旦 setFailed 被调用，GitHub Action 会立即停止并将该步骤的状态标记为失败。这对于处理错误、异常情况或确保工作流失败时不继续执行后续步骤非常重要。
+             * 通常在 try...catch 语句中捕获到异常后调用，用于提供失败的原因。
+             */
             (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.setFailed)(`Failed to run: ${e.message}, backtrace: ${e.stack}`);
         }
         else {
@@ -87289,12 +87294,33 @@ async function run() {
 }
 process
     .on("unhandledRejection", (reason, p) => {
+    // 当一个 Promise 被拒绝（即 .reject()），但没有相应的 .catch() 处理时，这个事件会被触发。它会捕获未处理的 Promise 拒绝并记录警告。
     (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)(`Unhandled Rejection at Promise: ${reason}, promise is ${p}`);
 })
     .on("uncaughtException", (e) => {
+    // 当程序抛出异常但没有捕获（即没有 try...catch）时，这个事件会被触发，防止程序崩溃并记录错误信息。
     (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)(`Uncaught Exception thrown: ${e}, backtrace: ${e.stack}`);
 });
 await run();
+/**
+ *
+1. pull_request 事件
+触发场景：当与拉取请求（Pull Request）相关的操作发生时触发。常见的触发操作包括：
+创建（opened）
+关闭（closed）
+合并（merged）
+更新（synchronize）等
+使用场景：当你需要在提交拉取请求或对其进行修改时执行某些自动化操作，比如代码检查、CI/CD 流程触发等。
+
+2. pull_request_target 事件
+触发场景：类似于 pull_request 事件，但用于特殊场景。pull_request_target 在目标仓库中触发，而不是拉取请求的源仓库中。它用于在拉取请求的目标分支中执行工作流。
+使用场景：通常用于有外部贡献者提交拉取请求的情况。因为外部贡献者的分支可能没有足够的权限，GitHub 会限制其工作流的执行。这时可以使用 pull_request_target 来在目标仓库中安全地执行工作流，避免权限问题。
+
+3. pull_request_review_comment 事件
+触发场景：当有人在拉取请求的代码评审过程中添加、编辑或删除评论时触发。
+使用场景：常用于处理代码评审中的自动化操作，例如对代码评审中的特定评论做出响应，自动生成反馈或更新。
+
+ */
 
 __webpack_async_result__();
 } catch(e) { __webpack_async_result__(e); } }, 1);
@@ -93217,7 +93243,6 @@ class Options {
     // print all options using core.info
     print() {
         console.log("\x1b[36m%s\x1b[0m", "Printing options... <options.print()>");
-        (0,core.info)(`Printing options... <options.print()>`);
         (0,core.info)(`debug: ${this.debug}`);
         (0,core.info)(`disable_review: ${this.disableReview}`);
         (0,core.info)(`disable_release_notes: ${this.disableReleaseNotes}`);
@@ -93238,6 +93263,7 @@ class Options {
         (0,core.info)(`summary_token_limits: ${this.lightTokenLimits.string()}`);
         (0,core.info)(`review_token_limits: ${this.heavyTokenLimits.string()}`);
         (0,core.info)(`language: ${this.language}`);
+        console.log("\x1b[36m%s\x1b[0m\n", "End of Printing options... <options.print()>");
     }
     checkPath(path) {
         const ok = this.pathFilters.check(path);
@@ -93954,20 +93980,29 @@ var tokenizer = __nccwpck_require__(4008);
 // eslint-disable-next-line camelcase
 const context = github.context;
 const repo = context.repo;
-const ignoreKeyword = '/reviewbot: ignore';
+const ignoreKeyword = "/reviewbot: ignore";
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 const codeReview = async (lightBot, heavyBot, options, prompts) => {
     const commenter = new src_commenter/* Commenter */.Es();
     const bedrockConcurrencyLimit = pLimit(options.bedrockConcurrencyLimit);
     const githubConcurrencyLimit = pLimit(options.githubConcurrencyLimit);
-    if (context.eventName !== 'pull_request' &&
-        context.eventName !== 'pull_request_target') {
+    if (context.eventName !== "pull_request" && context.eventName !== "pull_request_target") {
         (0,core.warning)(`Skipped: current event is ${context.eventName}, only support pull_request event`);
         return;
     }
+    // 虽然 pull_request 和 pull_request_target 是不同的事件类型，但它们的结构相同，GitHub 会在 context.payload.pull_request 中存储拉取请求的数据。因此，context.payload.pull_request 适用于两种事件类型。
     if (context.payload.pull_request == null) {
-        (0,core.warning)('Skipped: context.payload.pull_request is null');
+        (0,core.warning)("Skipped: context.payload.pull_request is null");
         return;
     }
+    // 调试：打印出 context.payload.pull_request 对象；用于以更具结构化的方式打印复杂的对象。
+    console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.pull_request... <review/codeReview(), console.log()>");
+    console.log("Debug: pull_request payload:", context.payload.pull_request);
+    // 或者使用 console.dir 打印出对象的完整结构
+    // depth: null：确保显示对象的所有嵌套层级，打印出完整的结构。
+    // colors: true：让终端输出的结果带有颜色，方便阅读。
+    console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.pull_request... <review/codeReview(), console.dir()>");
+    console.dir(context.payload.pull_request, { depth: null, colors: true });
     const inputs = new src_inputs/* Inputs */.k();
     inputs.title = context.payload.pull_request.title;
     if (context.payload.pull_request.body != null) {
@@ -93975,15 +94010,15 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
     }
     // if the description contains ignore_keyword, skip
     if (inputs.description.includes(ignoreKeyword)) {
-        (0,core.info)('Skipped: description contains ignore_keyword');
+        (0,core.info)("Skipped: description contains ignore_keyword");
         return;
     }
     inputs.systemMessage = options.systemMessage;
     inputs.reviewFileDiff = options.reviewFileDiff;
     // get SUMMARIZE_TAG message
     const existingSummarizeCmt = await commenter.findCommentWithTag(src_commenter/* SUMMARIZE_TAG */.Rp, context.payload.pull_request.number);
-    let existingCommitIdsBlock = '';
-    let existingSummarizeCmtBody = '';
+    let existingCommitIdsBlock = "";
+    let existingSummarizeCmtBody = "";
     if (existingSummarizeCmt != null) {
         existingSummarizeCmtBody = existingSummarizeCmt.body;
         inputs.rawSummary = commenter.getRawSummary(existingSummarizeCmtBody);
@@ -93992,12 +94027,11 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
     }
     const allCommitIds = await commenter.getAllCommitIds();
     // find highest reviewed commit id
-    let highestReviewedCommitId = '';
-    if (existingCommitIdsBlock !== '') {
+    let highestReviewedCommitId = "";
+    if (existingCommitIdsBlock !== "") {
         highestReviewedCommitId = commenter.getHighestReviewedCommitId(allCommitIds, commenter.getReviewedCommitIds(existingCommitIdsBlock));
     }
-    if (highestReviewedCommitId === '' ||
-        highestReviewedCommitId === context.payload.pull_request.head.sha) {
+    if (highestReviewedCommitId === "" || highestReviewedCommitId === context.payload.pull_request.head.sha) {
         (0,core.info)(`Will review from the base commit: ${context.payload.pull_request.base.sha}`);
         highestReviewedCommitId = context.payload.pull_request.base.sha;
     }
@@ -94009,25 +94043,25 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         owner: repo.owner,
         repo: repo.repo,
         base: highestReviewedCommitId,
-        head: context.payload.pull_request.head.sha
+        head: context.payload.pull_request.head.sha,
     });
     // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
     const targetBranchDiff = await octokit/* octokit.repos.compareCommits */.K.repos.compareCommits({
         owner: repo.owner,
         repo: repo.repo,
         base: context.payload.pull_request.base.sha,
-        head: context.payload.pull_request.head.sha
+        head: context.payload.pull_request.head.sha,
     });
     const incrementalFiles = incrementalDiff.data.files;
     const targetBranchFiles = targetBranchDiff.data.files;
     if (incrementalFiles == null || targetBranchFiles == null) {
-        (0,core.warning)('Skipped: files data is missing');
+        (0,core.warning)("Skipped: files data is missing");
         return;
     }
     // Filter out any file that is changed compared to the incremental changes
-    const files = targetBranchFiles.filter(targetBranchFile => incrementalFiles.some(incrementalFile => incrementalFile.filename === targetBranchFile.filename));
+    const files = targetBranchFiles.filter((targetBranchFile) => incrementalFiles.some((incrementalFile) => incrementalFile.filename === targetBranchFile.filename));
     if (files.length === 0) {
-        (0,core.warning)('Skipped: files is null');
+        (0,core.warning)("Skipped: files is null");
         return;
     }
     // skip files if they are filtered out
@@ -94043,20 +94077,20 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         }
     }
     if (filterSelectedFiles.length === 0) {
-        (0,core.warning)('Skipped: filterSelectedFiles is null');
+        (0,core.warning)("Skipped: filterSelectedFiles is null");
         return;
     }
     const commits = incrementalDiff.data.commits;
     if (commits.length === 0) {
-        (0,core.warning)('Skipped: commits is null');
+        (0,core.warning)("Skipped: commits is null");
         return;
     }
     // find hunks to review
-    const filteredFiles = await Promise.all(filterSelectedFiles.map(file => githubConcurrencyLimit(async () => {
+    const filteredFiles = await Promise.all(filterSelectedFiles.map((file) => githubConcurrencyLimit(async () => {
         // retrieve file contents
-        let fileContent = '';
+        let fileContent = "";
         if (context.payload.pull_request == null) {
-            (0,core.warning)('Skipped: context.payload.pull_request is null');
+            (0,core.warning)("Skipped: context.payload.pull_request is null");
             return null;
         }
         try {
@@ -94064,13 +94098,12 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
                 owner: repo.owner,
                 repo: repo.repo,
                 path: file.filename,
-                ref: context.payload.pull_request.base.sha
+                ref: context.payload.pull_request.base.sha,
             });
             if (contents.data != null) {
                 if (!Array.isArray(contents.data)) {
-                    if (contents.data.type === 'file' &&
-                        contents.data.content != null) {
-                        fileContent = Buffer.from(contents.data.content, 'base64').toString();
+                    if (contents.data.type === "file" && contents.data.content != null) {
+                        fileContent = Buffer.from(contents.data.content, "base64").toString();
                     }
                 }
             }
@@ -94078,7 +94111,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         catch (e) {
             (0,core.warning)(`Failed to get file contents: ${e}. This is OK if it's a new file.`);
         }
-        let fileDiff = '';
+        let fileDiff = "";
         if (file.patch != null) {
             fileDiff = file.patch;
         }
@@ -94105,11 +94138,7 @@ ${hunks.oldHunk}
 \`\`\`
 </old_hunk>
 `;
-            patches.push([
-                patchLines.newHunk.startLine,
-                patchLines.newHunk.endLine,
-                hunksStr
-            ]);
+            patches.push([patchLines.newHunk.startLine, patchLines.newHunk.endLine, hunksStr]);
         }
         if (patches.length > 0) {
             return [file.filename, fileContent, fileDiff, patches];
@@ -94119,9 +94148,9 @@ ${hunks.oldHunk}
         }
     })));
     // Filter out any null results
-    const filesAndChanges = filteredFiles.filter(file => file !== null);
+    const filesAndChanges = filteredFiles.filter((file) => file !== null);
     if (filesAndChanges.length === 0) {
-        (0,core.error)('Skipped: no files to review');
+        (0,core.error)("Skipped: no files to review");
         return;
     }
     let statusMsg = `<details>
@@ -94133,27 +94162,25 @@ ${filesAndChanges.length > 0
 <details>
 <summary>Files selected (${filesAndChanges.length})</summary>
 
-* ${filesAndChanges
-            .map(([filename, , , patches]) => `${filename} (${patches.length})`)
-            .join('\n* ')}
+* ${filesAndChanges.map(([filename, , , patches]) => `${filename} (${patches.length})`).join("\n* ")}
 </details>
 `
-        : ''}
+        : ""}
 ${filterIgnoredFiles.length > 0
         ? `
 <details>
 <summary>Files ignored due to filter (${filterIgnoredFiles.length})</summary>
 
-* ${filterIgnoredFiles.map(file => file.filename).join('\n* ')}
+* ${filterIgnoredFiles.map((file) => file.filename).join("\n* ")}
 
 </details>
 `
-        : ''}
+        : ""}
 `;
     // update the existing comment with in progress status
     const inProgressSummarizeCmt = commenter.addInProgressStatus(existingSummarizeCmtBody, statusMsg);
     // add in progress status to the summarize comment
-    await commenter.comment(`${inProgressSummarizeCmt}`, src_commenter/* SUMMARIZE_TAG */.Rp, 'replace');
+    await commenter.comment(`${inProgressSummarizeCmt}`, src_commenter/* SUMMARIZE_TAG */.Rp, "replace");
     const summariesFailed = [];
     const doSummary = async (filename, fileContent, fileDiff) => {
         (0,core.info)(`summarize: ${filename}`);
@@ -94176,8 +94203,8 @@ ${filterIgnoredFiles.length > 0
         // summarize content
         try {
             const [summarizeResp] = await lightBot.chat(summarizePrompt);
-            if (summarizeResp === '') {
-                (0,core.info)('summarize: nothing obtained from bedrock');
+            if (summarizeResp === "") {
+                (0,core.info)("summarize: nothing obtained from bedrock");
                 summariesFailed.push(`${filename} (nothing obtained from bedrock)`);
                 return null;
             }
@@ -94190,9 +94217,9 @@ ${filterIgnoredFiles.length > 0
                     const triageMatch = summarizeResp.match(triageRegex);
                     if (triageMatch != null) {
                         const triage = triageMatch[1];
-                        const needsReview = triage === 'NEEDS_REVIEW';
+                        const needsReview = triage === "NEEDS_REVIEW";
                         // remove this line from the comment
-                        const summary = summarizeResp.replace(triageRegex, '').trim();
+                        const summary = summarizeResp.replace(triageRegex, "").trim();
                         (0,core.info)(`filename: ${filename}, triage: ${triage}`);
                         return [filename, summary, needsReview];
                     }
@@ -94216,7 +94243,7 @@ ${filterIgnoredFiles.length > 0
             skippedFiles.push(filename);
         }
     }
-    const summaries = (await Promise.all(summaryPromises)).filter(summary => summary !== null);
+    const summaries = (await Promise.all(summaryPromises)).filter((summary) => summary !== null);
     if (summaries.length > 0) {
         const batchSize = 10;
         // join summaries into one in the batches of batchSize
@@ -94230,8 +94257,8 @@ ${filename}: ${summary}
             }
             // ask Bedrock to summarize the summaries
             const [summarizeResp] = await heavyBot.chat(prompts.renderSummarizeChangesets(inputs));
-            if (summarizeResp === '') {
-                (0,core.warning)('summarize: nothing obtained from bedrock');
+            if (summarizeResp === "") {
+                (0,core.warning)("summarize: nothing obtained from bedrock");
             }
             else {
                 inputs.rawSummary = summarizeResp;
@@ -94240,17 +94267,17 @@ ${filename}: ${summary}
     }
     // final summary
     const [summarizeFinalResponse] = await heavyBot.chat(prompts.renderSummarize(inputs));
-    if (summarizeFinalResponse === '') {
-        (0,core.info)('summarize: nothing obtained from bedrock');
+    if (summarizeFinalResponse === "") {
+        (0,core.info)("summarize: nothing obtained from bedrock");
     }
     if (options.disableReleaseNotes === false) {
         // final release notes
         const [releaseNotesResponse] = await heavyBot.chat(prompts.renderSummarizeReleaseNotes(inputs));
-        if (releaseNotesResponse === '') {
-            (0,core.info)('release notes: nothing obtained from bedrock');
+        if (releaseNotesResponse === "") {
+            (0,core.info)("release notes: nothing obtained from bedrock");
         }
         else {
-            let message = '### Summary (generated)\n\n';
+            let message = "### Summary (generated)\n\n";
             message += releaseNotesResponse;
             try {
                 await commenter.updateDescription(context.payload.pull_request.number, message);
@@ -94277,21 +94304,21 @@ ${skippedFiles.length > 0
 <details>
 <summary>Files not processed due to max files limit (${skippedFiles.length})</summary>
 
-* ${skippedFiles.join('\n* ')}
+* ${skippedFiles.join("\n* ")}
 
 </details>
 `
-        : ''}
+        : ""}
 ${summariesFailed.length > 0
         ? `
 <details>
 <summary>Files not summarized due to errors (${summariesFailed.length})</summary>
 
-* ${summariesFailed.join('\n* ')}
+* ${summariesFailed.join("\n* ")}
 
 </details>
 `
-        : ''}
+        : ""}
 `;
     if (!options.disableReview) {
         const filesAndChangesReview = filesAndChanges.filter(([filename]) => {
@@ -94326,7 +94353,7 @@ ${summariesFailed.length > 0
             let patchesPacked = 0;
             for (const [startLine, endLine, patch] of patches) {
                 if (context.payload.pull_request == null) {
-                    (0,core.warning)('No pull request found, skipping.');
+                    (0,core.warning)("No pull request found, skipping.");
                     continue;
                 }
                 // see if we can pack more patches into this request
@@ -94338,7 +94365,7 @@ ${summariesFailed.length > 0
                     break;
                 }
                 patchesPacked += 1;
-                let commentChain = '';
+                let commentChain = "";
                 try {
                     const allChains = await commenter.getCommentChainsWithinRange(context.payload.pull_request.number, filename, startLine, endLine, src_commenter/* COMMENT_REPLY_TAG */.aD);
                     if (allChains.length > 0) {
@@ -94351,9 +94378,8 @@ ${summariesFailed.length > 0
                 }
                 // try packing comment_chain into this request
                 const commentChainTokens = (0,tokenizer/* getTokenCount */.V)(commentChain);
-                if (tokens + commentChainTokens >
-                    options.heavyTokenLimits.requestTokens) {
-                    commentChain = '';
+                if (tokens + commentChainTokens > options.heavyTokenLimits.requestTokens) {
+                    commentChain = "";
                 }
                 else {
                     tokens += commentChainTokens;
@@ -94361,7 +94387,7 @@ ${summariesFailed.length > 0
                 ins.patches += `
 ${patch}
 `;
-                if (commentChain !== '') {
+                if (commentChain !== "") {
                     ins.patches += `
 <comment_chains>
 \`\`\`
@@ -94374,9 +94400,9 @@ ${commentChain}
             if (patchesPacked > 0) {
                 // perform review
                 try {
-                    const [response] = await heavyBot.chat(prompts.renderReviewFileDiff(ins), '{');
-                    if (response === '') {
-                        (0,core.info)('review: nothing obtained from bedrock');
+                    const [response] = await heavyBot.chat(prompts.renderReviewFileDiff(ins), "{");
+                    if (response === "") {
+                        (0,core.info)("review: nothing obtained from bedrock");
                         reviewsFailed.push(`${filename} (no response)`);
                         return;
                     }
@@ -94384,14 +94410,12 @@ ${commentChain}
                     const reviews = parseReview(response, patches);
                     for (const review of reviews) {
                         // check for LGTM
-                        if (!options.reviewCommentLGTM &&
-                            (review.comment.includes('LGTM') ||
-                                review.comment.includes('looks good to me'))) {
+                        if (!options.reviewCommentLGTM && (review.comment.includes("LGTM") || review.comment.includes("looks good to me"))) {
                             lgtmCount += 1;
                             continue;
                         }
                         if (context.payload.pull_request == null) {
-                            (0,core.warning)('No pull request found, skipping.');
+                            (0,core.warning)("No pull request found, skipping.");
                             continue;
                         }
                         try {
@@ -94429,20 +94453,20 @@ ${reviewsFailed.length > 0
             ? `<details>
 <summary>Files not reviewed due to errors (${reviewsFailed.length})</summary>
 
-* ${reviewsFailed.join('\n* ')}
+* ${reviewsFailed.join("\n* ")}
 
 </details>
 `
-            : ''}
+            : ""}
 ${reviewsSkipped.length > 0
             ? `<details>
 <summary>Files skipped from review due to trivial changes (${reviewsSkipped.length})</summary>
 
-* ${reviewsSkipped.join('\n* ')}
+* ${reviewsSkipped.join("\n* ")}
 
 </details>
 `
-            : ''}
+            : ""}
 <details>
 <summary>Review comments generated (${reviewCount + lgtmCount})</summary>
 
@@ -94475,7 +94499,7 @@ ${reviewsSkipped.length > 0
         await commenter.submitReview(context.payload.pull_request.number, commits[commits.length - 1].sha, statusMsg);
     }
     // post the final summary comment
-    await commenter.comment(`${summarizeComment}`, src_commenter/* SUMMARIZE_TAG */.Rp, 'replace');
+    await commenter.comment(`${summarizeComment}`, src_commenter/* SUMMARIZE_TAG */.Rp, "replace");
 };
 const splitPatch = (patch) => {
     if (patch == null) {
@@ -94510,12 +94534,12 @@ const patchStartEndLine = (patch) => {
         return {
             oldHunk: {
                 startLine: oldBegin,
-                endLine: oldBegin + oldDiff - 1
+                endLine: oldBegin + oldDiff - 1,
             },
             newHunk: {
                 startLine: newBegin,
-                endLine: newBegin + newDiff - 1
-            }
+                endLine: newBegin + newDiff - 1,
+            },
         };
     }
     else {
@@ -94530,30 +94554,29 @@ const parsePatch = (patch) => {
     const oldHunkLines = [];
     const newHunkLines = [];
     let newLine = hunkInfo.newHunk.startLine;
-    const lines = patch.split('\n').slice(1); // Skip the @@ line
+    const lines = patch.split("\n").slice(1); // Skip the @@ line
     // Remove the last line if it's empty
-    if (lines[lines.length - 1] === '') {
+    if (lines[lines.length - 1] === "") {
         lines.pop();
     }
     // Skip annotations for the first 3 and last 3 lines
     const skipStart = 3;
     const skipEnd = 3;
     let currentLine = 0;
-    const removalOnly = !lines.some(line => line.startsWith('+'));
+    const removalOnly = !lines.some((line) => line.startsWith("+"));
     for (const line of lines) {
         currentLine++;
-        if (line.startsWith('-')) {
+        if (line.startsWith("-")) {
             oldHunkLines.push(`${line.substring(1)}`);
         }
-        else if (line.startsWith('+')) {
+        else if (line.startsWith("+")) {
             newHunkLines.push(`${newLine}: ${line.substring(1)}`);
             newLine++;
         }
         else {
             // context line
             oldHunkLines.push(`${line}`);
-            if (removalOnly ||
-                (currentLine > skipStart && currentLine <= lines.length - skipEnd)) {
+            if (removalOnly || (currentLine > skipStart && currentLine <= lines.length - skipEnd)) {
                 newHunkLines.push(`${newLine}: ${line}`);
             }
             else {
@@ -94563,8 +94586,8 @@ const parsePatch = (patch) => {
         }
     }
     return {
-        oldHunk: oldHunkLines.join('\n'),
-        newHunk: newHunkLines.join('\n')
+        oldHunk: oldHunkLines.join("\n"),
+        newHunk: newHunkLines.join("\n"),
     };
 };
 function parseReview(response, 
@@ -94578,7 +94601,7 @@ patches) {
                 reviews.push({
                     startLine: r.line_start ?? 0,
                     endLine: r.line_end ?? 0,
-                    comment: r.comment
+                    comment: r.comment,
                 });
             }
         }
