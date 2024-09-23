@@ -100,7 +100,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     head: context.payload.pull_request.head.sha,
   });
   console.log("\n\n\x1b[36m%s\x1b[0m", "Printing incrementalDiff (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>");
-  console.dir(incrementalDiff, { depth: null, colors: true });
+  console.dir(incrementalDiff.data.files, { depth: null, colors: true });
 
   // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
   const targetBranchDiff = await octokit.repos.compareCommits({
@@ -113,7 +113,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     "\n\n\x1b[36m%s\x1b[0m",
     "Printing targetBranchDiff (context.payload.pull_request.base.sha vs. context.payload.pull_request.head.sha): <review/codeReview()>"
   );
-  console.dir(targetBranchDiff, { depth: 1, colors: true });
+  console.dir(targetBranchDiff.data.files, { depth: 1, colors: true });
 
   const incrementalFiles = incrementalDiff.data.files;
   const targetBranchFiles = targetBranchDiff.data.files;
