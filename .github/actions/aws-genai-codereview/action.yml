@@ -36,6 +36,7 @@ inputs:
       - https://github.com/isaacs/minimatch
     default: |
       !dist/**
+      !**/dist/**
       !**/*.app
       !**/*.bin
       !**/*.bz2
