@@ -86586,14 +86586,14 @@ class Bot {
 // eslint-disable-next-line camelcase
 const context = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context;
 const repo = context.repo;
-const COMMENT_GREETING = ''; //`${getInput('bot_icon')}`
-const COMMENT_TAG = '<!-- This is an auto-generated comment by AI reviewer -->';
-const COMMENT_REPLY_TAG = '<!-- This is an auto-generated reply by AI reviewer -->';
-const SUMMARIZE_TAG = '<!-- This is an auto-generated comment: summarize by AI reviewer -->';
-const IN_PROGRESS_START_TAG = '<!-- This is an auto-generated comment: summarize review in progress by AI reviewer -->';
-const IN_PROGRESS_END_TAG = '<!-- end of auto-generated comment: summarize review in progress by AI reviewer -->';
-const DESCRIPTION_START_TAG = '<!-- This is an auto-generated comment: release notes by AI reviewer -->';
-const DESCRIPTION_END_TAG = '<!-- end of auto-generated comment: release notes by AI reviewer -->';
+const COMMENT_GREETING = ""; //`${getInput('bot_icon')}`
+const COMMENT_TAG = "<!-- This is an auto-generated comment by AI reviewer -->";
+const COMMENT_REPLY_TAG = "<!-- This is an auto-generated reply by AI reviewer -->";
+const SUMMARIZE_TAG = "<!-- This is an auto-generated comment: summarize by AI reviewer -->";
+const IN_PROGRESS_START_TAG = "<!-- This is an auto-generated comment: summarize review in progress by AI reviewer -->";
+const IN_PROGRESS_END_TAG = "<!-- end of auto-generated comment: summarize review in progress by AI reviewer -->";
+const DESCRIPTION_START_TAG = "<!-- This is an auto-generated comment: release notes by AI reviewer -->";
+const DESCRIPTION_END_TAG = "<!-- end of auto-generated comment: release notes by AI reviewer -->";
 const RAW_SUMMARY_START_TAG = `<!-- This is an auto-generated comment: raw summary by AI reviewer -->
 <!--
 `;
@@ -86604,9 +86604,9 @@ const SHORT_SUMMARY_START_TAG = `<!-- This is an auto-generated comment: short s
 `;
 const SHORT_SUMMARY_END_TAG = `-->
 <!-- end of auto-generated comment: short summary by AI reviewer -->`;
-const COMMIT_ID_START_TAG = '<!-- commit_ids_reviewed_start -->';
-const COMMIT_ID_END_TAG = '<!-- commit_ids_reviewed_end -->';
-const SELF_LOGIN = 'github-actions[bot]';
+const COMMIT_ID_START_TAG = "<!-- commit_ids_reviewed_start -->";
+const COMMIT_ID_END_TAG = "<!-- commit_ids_reviewed_end -->";
+const SELF_LOGIN = "github-actions[bot]";
 class Commenter {
     /**
      * @param mode - Can be "create", "replace". Default is "replace".
@@ -86618,9 +86618,14 @@ class Commenter {
         }
         else if (context.payload.issue != null) {
             target = context.payload.issue.number;
+            // Print info for debuging
+            console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.issue: <review/codeReview(), console.dir()>");
+            console.group("context.payload.issue");
+            console.dir(context.payload.issue, { depth: 1, colors: true });
+            console.groupEnd();
         }
         else {
-            (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)('Skipped: context.payload.pull_request and context.payload.issue are both null');
+            (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)("Skipped: context.payload.pull_request and context.payload.issue are both null");
             return;
         }
         if (!tag) {
@@ -86631,10 +86636,10 @@ class Commenter {
 ${message}
 
 ${tag}`;
-        if (mode === 'create') {
+        if (mode === "create") {
             await this.create(body, target);
         }
-        else if (mode === 'replace') {
+        else if (mode === "replace") {
             await this.replace(body, tag, target);
         }
         else {
@@ -86648,7 +86653,7 @@ ${tag}`;
         if (start >= 0 && end >= 0) {
             return content.slice(start + startTag.length, end);
         }
-        return '';
+        return "";
     }
     removeContentWithinTags(content, startTag, endTag) {
         const start = content.indexOf(startTag);
@@ -86669,7 +86674,7 @@ ${tag}`;
     }
     getReleaseNotes(description) {
         const releaseNotes = this.getContentWithinTags(description, DESCRIPTION_START_TAG, DESCRIPTION_END_TAG);
-        return releaseNotes.replace(/(^|\n)> .*/g, '');
+        return releaseNotes.replace(/(^|\n)> .*/g, "");
     }
     async updateDescription(pullNumber, message) {
         // add this response to the description field of the PR as release notes by looking
@@ -86680,9 +86685,9 @@ ${tag}`;
                 owner: repo.owner,
                 repo: repo.repo,
                 // eslint-disable-next-line camelcase
-                pull_number: pullNumber
+                pull_number: pullNumber,
             });
-            let body = '';
+            let body = "";
             if (pr.data.body) {
                 body = pr.data.body;
             }
@@ -86694,7 +86699,7 @@ ${tag}`;
                 repo: repo.repo,
                 // eslint-disable-next-line camelcase
                 pull_number: pullNumber,
-                body: newDescription
+                body: newDescription,
             });
         }
         catch (e) {
@@ -86712,7 +86717,7 @@ ${COMMENT_TAG}`;
             path,
             startLine,
             endLine,
-            message
+            message,
         });
     }
     async deletePendingReview(pullNumber) {
@@ -86721,9 +86726,9 @@ ${COMMENT_TAG}`;
                 owner: repo.owner,
                 repo: repo.repo,
                 // eslint-disable-next-line camelcase
-                pull_number: pullNumber
+                pull_number: pullNumber,
             });
-            const pendingReview = reviews.data.find(review => review.state === 'PENDING');
+            const pendingReview = reviews.data.find((review) => review.state === "PENDING");
             if (pendingReview) {
                 (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`Deleting pending review for PR #${pullNumber} id: ${pendingReview.id}`);
                 try {
@@ -86733,7 +86738,7 @@ ${COMMENT_TAG}`;
                         // eslint-disable-next-line camelcase
                         pull_number: pullNumber,
                         // eslint-disable-next-line camelcase
-                        review_id: pendingReview.id
+                        review_id: pendingReview.id,
                     });
                 }
                 catch (e) {
@@ -86761,8 +86766,8 @@ ${statusMsg}
                     pull_number: pullNumber,
                     // eslint-disable-next-line camelcase
                     commit_id: commitId,
-                    event: 'COMMENT',
-                    body
+                    event: "COMMENT",
+                    body,
                 });
             }
             catch (e) {
@@ -86780,7 +86785,7 @@ ${statusMsg}
                             owner: repo.owner,
                             repo: repo.repo,
                             // eslint-disable-next-line camelcase
-                            comment_id: c.id
+                            comment_id: c.id,
                         });
                     }
                     catch (e) {
@@ -86794,13 +86799,13 @@ ${statusMsg}
             const commentData = {
                 path: comment.path,
                 body: comment.message,
-                line: comment.endLine
+                line: comment.endLine,
             };
             if (comment.startLine !== comment.endLine) {
                 // eslint-disable-next-line camelcase
                 commentData.start_line = comment.startLine;
                 // eslint-disable-next-line camelcase
-                commentData.start_side = 'RIGHT';
+                commentData.start_side = "RIGHT";
             }
             return commentData;
         };
@@ -86812,7 +86817,7 @@ ${statusMsg}
                 pull_number: pullNumber,
                 // eslint-disable-next-line camelcase
                 commit_id: commitId,
-                comments: this.reviewCommentsBuffer.map(comment => generateCommentData(comment))
+                comments: this.reviewCommentsBuffer.map((comment) => generateCommentData(comment)),
             });
             (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`Submitting review for PR #${pullNumber}, total comments: ${this.reviewCommentsBuffer.length}, review id: ${review.data.id}`);
             await _octokit__WEBPACK_IMPORTED_MODULE_2__/* .octokit.pulls.submitReview */ .K.pulls.submitReview({
@@ -86822,8 +86827,8 @@ ${statusMsg}
                 pull_number: pullNumber,
                 // eslint-disable-next-line camelcase
                 review_id: review.data.id,
-                event: 'COMMENT',
-                body
+                event: "COMMENT",
+                body,
             });
         }
         catch (e) {
@@ -86839,7 +86844,7 @@ ${statusMsg}
                     pull_number: pullNumber,
                     // eslint-disable-next-line camelcase
                     commit_id: commitId,
-                    ...generateCommentData(comment)
+                    ...generateCommentData(comment),
                 };
                 try {
                     await _octokit__WEBPACK_IMPORTED_MODULE_2__/* .octokit.pulls.createReviewComment */ .K.pulls.createReviewComment(commentData);
@@ -86868,7 +86873,7 @@ ${COMMENT_REPLY_TAG}
                 pull_number: pullNumber,
                 body: reply,
                 // eslint-disable-next-line camelcase
-                comment_id: topLevelComment.id
+                comment_id: topLevelComment.id,
             });
         }
         catch (error) {
@@ -86881,7 +86886,7 @@ ${COMMENT_REPLY_TAG}
                     pull_number: pullNumber,
                     body: `Could not post the reply to the top-level comment due to the following error: ${error}`,
                     // eslint-disable-next-line camelcase
-                    comment_id: topLevelComment.id
+                    comment_id: topLevelComment.id,
                 });
             }
             catch (e) {
@@ -86897,7 +86902,7 @@ ${COMMENT_REPLY_TAG}
                     repo: repo.repo,
                     // eslint-disable-next-line camelcase
                     comment_id: topLevelComment.id,
-                    body: newBody
+                    body: newBody,
                 });
             }
         }
@@ -86908,22 +86913,18 @@ ${COMMENT_REPLY_TAG}
     async getCommentsWithinRange(pullNumber, path, startLine, endLine) {
         const comments = await this.listReviewComments(pullNumber);
         return comments.filter((comment) => comment.path === path &&
-            comment.body !== '' &&
-            ((comment.start_line !== undefined &&
-                comment.start_line >= startLine &&
-                comment.line <= endLine) ||
+            comment.body !== "" &&
+            ((comment.start_line !== undefined && comment.start_line >= startLine && comment.line <= endLine) ||
                 (startLine === endLine && comment.line === endLine)));
     }
     async getCommentsAtRange(pullNumber, path, startLine, endLine) {
         const comments = await this.listReviewComments(pullNumber);
         return comments.filter((comment) => comment.path === path &&
-            comment.body !== '' &&
-            ((comment.start_line !== undefined &&
-                comment.start_line === startLine &&
-                comment.line === endLine) ||
+            comment.body !== "" &&
+            ((comment.start_line !== undefined && comment.start_line === startLine && comment.line === endLine) ||
                 (startLine === endLine && comment.line === endLine)));
     }
-    async getCommentChainsWithinRange(pullNumber, path, startLine, endLine, tag = '') {
+    async getCommentChainsWithinRange(pullNumber, path, startLine, endLine, tag = "") {
         const existingComments = await this.getCommentsWithinRange(pullNumber, path, startLine, endLine);
         // find all top most comments
         const topLevelComments = [];
@@ -86932,7 +86933,7 @@ ${COMMENT_REPLY_TAG}
                 topLevelComments.push(comment);
             }
         }
-        let allChains = '';
+        let allChains = "";
         let chainNum = 0;
         for (const topLevelComment of topLevelComments) {
             // get conversation chain
@@ -86949,7 +86950,7 @@ ${chain}
     }
     getRole(login) {
         if (login === SELF_LOGIN)
-            return '\nA (You): ';
+            return "\nA (You): ";
         return `\nH (@${login}):`;
     }
     async composeCommentChain(reviewComments, topLevelComment) {
@@ -86957,7 +86958,7 @@ ${chain}
             .filter((cmt) => cmt.in_reply_to_id === topLevelComment.id)
             .map((cmt) => `${this.getRole(cmt.user.login)} ${cmt.body}`);
         conversationChain.unshift(`${this.getRole(topLevelComment.user.login)} ${topLevelComment.body}`);
-        return `${conversationChain.join('\n')}`;
+        return `${conversationChain.join("\n")}`;
     }
     async getCommentChain(pullNumber, comment) {
         try {
@@ -86969,8 +86970,8 @@ ${chain}
         catch (e) {
             (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)(`Failed to get conversation chain: ${e}`);
             return {
-                chain: '',
-                topLevelComment: null
+                chain: "",
+                topLevelComment: null,
             };
         }
     }
@@ -87003,7 +87004,7 @@ ${chain}
                     pull_number: target,
                     page,
                     // eslint-disable-next-line camelcase
-                    per_page: 100
+                    per_page: 100,
                 });
                 allComments.push(...comments);
                 page++;
@@ -87027,7 +87028,7 @@ ${chain}
                 repo: repo.repo,
                 // eslint-disable-next-line camelcase
                 issue_number: target,
-                body
+                body,
             });
             // add comment to issueCommentsCache
             if (this.issueCommentsCache[target]) {
@@ -87050,7 +87051,7 @@ ${chain}
                     repo: repo.repo,
                     // eslint-disable-next-line camelcase
                     comment_id: cmt.id,
-                    body
+                    body,
                 });
             }
             else {
@@ -87092,7 +87093,7 @@ ${chain}
                     issue_number: target,
                     page,
                     // eslint-disable-next-line camelcase
-                    per_page: 100
+                    per_page: 100,
                 });
                 allComments.push(...comments);
                 page++;
@@ -87120,9 +87121,9 @@ ${chain}
         const ids = commentBody.substring(start + COMMIT_ID_START_TAG.length, end);
         // remove the <!-- and --> markers from each id and extract the id and remove empty strings
         return ids
-            .split('<!--')
-            .map(id => id.replace('-->', '').trim())
-            .filter(id => id !== '');
+            .split("<!--")
+            .map((id) => id.replace("-->", "").trim())
+            .filter((id) => id !== "");
     }
     // get review commit ids comment block from the body as a string
     // including markers
@@ -87130,7 +87131,7 @@ ${chain}
         const start = commentBody.indexOf(COMMIT_ID_START_TAG);
         const end = commentBody.indexOf(COMMIT_ID_END_TAG);
         if (start === -1 || end === -1) {
-            return '';
+            return "";
         }
         return commentBody.substring(start, end + COMMIT_ID_END_TAG.length);
     }
@@ -87152,7 +87153,7 @@ ${chain}
                 return commitIds[i];
             }
         }
-        return '';
+        return "";
     }
     async getAllCommitIds() {
         const allCommits = [];
@@ -87167,9 +87168,9 @@ ${chain}
                     pull_number: context.payload.pull_request.number,
                     // eslint-disable-next-line camelcase
                     per_page: 100,
-                    page
+                    page,
                 });
-                allCommits.push(...commits.data.map(commit => commit.sha));
+                allCommits.push(...commits.data.map((commit) => commit.sha));
                 page++;
             } while (commits.data.length > 0);
         }
@@ -87203,8 +87204,7 @@ ${commentBody}`;
         // remove the in-progress status if the marker exists
         // otherwise do nothing
         if (start !== -1 && end !== -1) {
-            return (commentBody.substring(0, start) +
-                commentBody.substring(end + IN_PROGRESS_END_TAG.length));
+            return commentBody.substring(0, start) + commentBody.substring(end + IN_PROGRESS_END_TAG.length);
         }
         return commentBody;
     }
@@ -94002,10 +94002,6 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
     console.group("context.payload.pull_request");
     console.dir(context.payload.pull_request, { depth: 1, colors: true });
     console.groupEnd();
-    console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.issue: <review/codeReview(), console.dir()>");
-    console.group("context.payload.issue");
-    console.dir(context.payload.issue, { depth: 1, colors: true });
-    console.groupEnd();
     const inputs = new src_inputs/* Inputs */.k();
     inputs.title = context.payload.pull_request.title;
     if (context.payload.pull_request.body != null) {
@@ -94024,6 +94020,8 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
     let existingSummarizeCmtBody = "";
     if (existingSummarizeCmt != null) {
         existingSummarizeCmtBody = existingSummarizeCmt.body;
+        console.log("\n\x1b[36m%s\x1b[0m", "Printing existingSummarizeCmtBody = existingSummarizeCmt.body: <review/codeReview()>");
+        console.dir(existingSummarizeCmtBody, { depth: null, colors: true });
         inputs.rawSummary = commenter.getRawSummary(existingSummarizeCmtBody);
         inputs.shortSummary = commenter.getShortSummary(existingSummarizeCmtBody);
         existingCommitIdsBlock = commenter.getReviewedCommitIdsBlock(existingSummarizeCmtBody);

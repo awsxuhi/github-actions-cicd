@@ -50,11 +50,6 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   console.dir(context.payload.pull_request, { depth: 1, colors: true });
   console.groupEnd();
 
-  console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.issue: <review/codeReview(), console.dir()>");
-  console.group("context.payload.issue");
-  console.dir(context.payload.issue, { depth: 1, colors: true });
-  console.groupEnd();
-
   const inputs: Inputs = new Inputs();
   inputs.title = context.payload.pull_request.title;
   if (context.payload.pull_request.body != null) {
@@ -76,6 +71,8 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   let existingSummarizeCmtBody = "";
   if (existingSummarizeCmt != null) {
     existingSummarizeCmtBody = existingSummarizeCmt.body;
+    console.log("\n\x1b[36m%s\x1b[0m", "Printing existingSummarizeCmtBody = existingSummarizeCmt.body: <review/codeReview()>");
+    console.dir(existingSummarizeCmtBody, { depth: null, colors: true });
     inputs.rawSummary = commenter.getRawSummary(existingSummarizeCmtBody);
     inputs.shortSummary = commenter.getShortSummary(existingSummarizeCmtBody);
     existingCommitIdsBlock = commenter.getReviewedCommitIdsBlock(existingSummarizeCmtBody);
