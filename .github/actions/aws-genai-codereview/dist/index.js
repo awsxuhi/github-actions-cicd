@@ -94041,6 +94041,11 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
     else {
         (0,core.info)(`Will review from commit: ${highestReviewedCommitId}`);
     }
+    /************************************************************************************************
+    这段代码通过 GitHub API 的 compareCommits 方法，分别获取两个 diff（差异）：
+    1. incrementalDiff：从 highestReviewedCommitId（上次审查的最后一次提交）到 PR 最新提交（context.payload.pull_request.head.sha）的增量差异。
+    2. targetBranchDiff：从目标分支的基准提交（context.payload.pull_request.base.sha）到 PR 最新提交的完整差异。
+     ***********************************************************************************************/
     // Fetch the diff between the highest reviewed commit and the latest commit of the PR branch
     const incrementalDiff = await octokit/* octokit.repos.compareCommits */.K.repos.compareCommits({
         owner: repo.owner,
@@ -94048,7 +94053,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         base: highestReviewedCommitId,
         head: context.payload.pull_request.head.sha,
     });
-    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing incrementalDiff (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>");
+    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing incrementalDiff.data.files (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>");
     console.dir(incrementalDiff.data.files, { depth: null, colors: true });
     // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
     const targetBranchDiff = await octokit/* octokit.repos.compareCommits */.K.repos.compareCommits({
@@ -94057,21 +94062,26 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         base: context.payload.pull_request.base.sha,
         head: context.payload.pull_request.head.sha,
     });
-    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing targetBranchDiff (context.payload.pull_request.base.sha vs. context.payload.pull_request.head.sha): <review/codeReview()>");
+    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing targetBranchDiff.data.files (context.payload.pull_request.base.sha vs. context.payload.pull_request.head.sha): <review/codeReview()>");
     console.dir(targetBranchDiff.data.files, { depth: 1, colors: true });
-    const incrementalFiles = incrementalDiff.data.files;
-    const targetBranchFiles = targetBranchDiff.data.files;
+    const incrementalFiles = incrementalDiff.data.files || [];
+    const targetBranchFiles = targetBranchDiff.data.files || [];
+    // const incrementalFiles = incrementalDiff.data.files;
+    // const targetBranchFiles = targetBranchDiff.data.files;
     if (incrementalFiles == null || targetBranchFiles == null) {
         (0,core.warning)("Skipped: files data is missing");
         return;
     }
     // Filter out any file that is changed compared to the incremental changes
+    // 这一行代码的目的是过滤出仅在增量修改中（从 highestReviewedCommitId 到 PR 最新提交）存在的文件。通过 filter 方法，targetBranchFiles 中的文件会被过滤，只保留那些同时在 incrementalFiles 中出现的文件。这确保了我们只对增量修改的文件进行审查，而不是对整个 PR 的所有文件进行重复审查。
+    // filter() 是保留那些 targetBranchFiles 中的文件，前提是该文件的 filename 出现在 incrementalFiles 中。也就是说，只有在增量提交中也发生了更改的文件会被保留。
     const files = targetBranchFiles.filter((targetBranchFile) => incrementalFiles.some((incrementalFile) => incrementalFile.filename === targetBranchFile.filename));
+    // 如果 files.length === 0，说明从上次审查的提交到最新提交之间没有任何文件发生过变化
     if (files.length === 0) {
-        (0,core.warning)("Skipped: files is null");
+        (0,core.info)("No new files to review since the last commit.");
         return;
     }
-    // skip files if they are filtered out
+    // skip files if they are filtered out (minimatched)
     const filterSelectedFiles = [];
     const filterIgnoredFiles = [];
     for (const file of files) {
@@ -94088,11 +94098,14 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         return;
     }
     const commits = incrementalDiff.data.commits;
+    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing incrementalDiff.data.commits (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>");
+    console.dir(incrementalDiff.data.commits, { depth: null, colors: true });
     if (commits.length === 0) {
         (0,core.warning)("Skipped: commits is null");
         return;
     }
     // find hunks to review
+    // githubConcurrencyLimit(async () => {...}) 的用法意味着每次调用这个函数时，最多只会有 options.githubConcurrencyLimit 个异步任务同时执行。多余的任务将排队等待。这种机制常用于防止超过 API 请求限制，避免引发 429 "Too Many Requests" 错误。
     const filteredFiles = await Promise.all(filterSelectedFiles.map((file) => githubConcurrencyLimit(async () => {
         // retrieve file contents
         let fileContent = "";
@@ -94124,7 +94137,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         }
         const patches = [];
         for (const patch of splitPatch(file.patch)) {
-            const patchLines = patchStartEndLine(patch);
+            const patchLines = patchStartEndLine(patch); // patch ==> a hunk
             if (patchLines == null) {
                 continue;
             }
@@ -94162,7 +94175,7 @@ ${hunks.oldHunk}
     }
     let statusMsg = `<details>
 <summary>Commits</summary>
-Files that changed from the base of the PR and between ${highestReviewedCommitId} and ${context.payload.pull_request.head.sha} commits.
+Files that changed from the base of the PR and between ${highestReviewedCommitId} and ${context.payload.pull_request.head.sha} commits. (Focusing on incremental changes)
 </details>
 ${filesAndChanges.length > 0
         ? `
@@ -94508,10 +94521,17 @@ ${reviewsSkipped.length > 0
     // post the final summary comment
     await commenter.comment(`${summarizeComment}`, src_commenter/* SUMMARIZE_TAG */.Rp, "replace");
 };
+// splitPatch 函数的目的是解析和分割 diff 文件中的 patch 字符串部分。它将 patch 字符串分割成多个部分，每个部分表示文件的一段修改（hunk）。
+// 输出：一个数组，数组中的每个元素是 patch 中的一段差异（hunk）。
 const splitPatch = (patch) => {
     if (patch == null) {
         return [];
     }
+    /**
+     * /gm 的含义：
+     * /g：全局匹配 (global match)，表示正则表达式在输入字符串中查找所有匹配，而不是找到第一个匹配后停止。
+     * /m：多行模式 (multiline mode)，表示 ^ 和 $ 不仅仅匹配字符串的开头和结尾，还匹配每一行的开头和结尾。
+     */
     const pattern = /(^@@ -(\d+),(\d+) \+(\d+),(\d+) @@).*$/gm;
     const result = [];
     let last = -1;
@@ -94530,8 +94550,12 @@ const splitPatch = (patch) => {
     }
     return result;
 };
-const patchStartEndLine = (patch) => {
+const patchStartEndLine = (patch // patch = a hunk in a diff file
+) => {
+    // 这个正则表达式用于匹配 diff 文件中的 hunk 标记行，格式类似于 @@ -10,5 +10,6 @@
     const pattern = /(^@@ -(\d+),(\d+) \+(\d+),(\d+) @@)/gm;
+    // match[0]：表示正则表达式匹配到的整个字符串，即正则表达式完全匹配的部分。
+    // match[1]：匹配的捕获组，按照正则表达式的分组是 @@ -10,5 +10,6 @@，但括号匹配的组实际从 match[2] 开始。
     const match = pattern.exec(patch);
     if (match != null) {
         const oldBegin = parseInt(match[2]);
@@ -94540,12 +94564,12 @@ const patchStartEndLine = (patch) => {
         const newDiff = parseInt(match[5]);
         return {
             oldHunk: {
-                startLine: oldBegin,
-                endLine: oldBegin + oldDiff - 1,
+                startLine: oldBegin, //e.g., 10
+                endLine: oldBegin + oldDiff - 1, //e.g., 14
             },
             newHunk: {
-                startLine: newBegin,
-                endLine: newBegin + newDiff - 1,
+                startLine: newBegin, //e.g., 10
+                endLine: newBegin + newDiff - 1, //e.g., 15
             },
         };
     }
@@ -94567,6 +94591,11 @@ const parsePatch = (patch) => {
         lines.pop();
     }
     // Skip annotations for the first 3 and last 3 lines
+    /**
+     * 在 GitHub 的 diff 格式中，上下文行是用于帮助开发人员理解代码变化的背景。在显示文件的修改部分时，GitHub 通常会在代码块中显示修改前后的 3 行上下文，以便评审者能够更好地理解修改内容。这个做法是标准的，因为它能为审查者提供足够的上下文，帮助他们理解修改的代码逻辑。
+  
+  设置 skipStart = 3 和 skipEnd = 3，就是为了跳过前 3 行和后 3 行的行号显示，但仍然保留它们的内容，确保上下文完整呈现。这样做的目的是简化变更的显示，避免在上下文行上添加额外的行号，使重点集中在实际的代码变动上。
+     */
     const skipStart = 3;
     const skipEnd = 3;
     let currentLine = 0;
