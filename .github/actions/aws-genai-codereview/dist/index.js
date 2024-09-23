@@ -93995,14 +93995,17 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         (0,core.warning)("Skipped: context.payload.pull_request is null");
         return;
     }
-    // 调试：打印出 context.payload.pull_request 对象；用于以更具结构化的方式打印复杂的对象。
-    console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.pull_request... <review/codeReview(), console.log()>");
-    console.log("Debug: pull_request payload:", context.payload.pull_request);
     // 或者使用 console.dir 打印出对象的完整结构
     // depth: null：确保显示对象的所有嵌套层级，打印出完整的结构。
     // colors: true：让终端输出的结果带有颜色，方便阅读。
-    console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.pull_request... <review/codeReview(), console.dir()>");
-    console.dir(context.payload.pull_request, { depth: null, colors: true });
+    console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.pull_request: <review/codeReview(), console.dir()>");
+    console.group("context.payload.pull_request");
+    console.dir(context.payload.pull_request, { depth: 1, colors: true });
+    console.groupEnd();
+    console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.issue: <review/codeReview(), console.dir()>");
+    console.group("context.payload.issue");
+    console.dir(context.payload.issue, { depth: 1, colors: true });
+    console.groupEnd();
     const inputs = new src_inputs/* Inputs */.k();
     inputs.title = context.payload.pull_request.title;
     if (context.payload.pull_request.body != null) {
