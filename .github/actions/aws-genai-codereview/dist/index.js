@@ -87226,7 +87226,7 @@ __nccwpck_require__.r(__webpack_exports__);
 /* harmony import */ var _bot__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(6229);
 /* harmony import */ var _options__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(1035);
 /* harmony import */ var _prompts__WEBPACK_IMPORTED_MODULE_6__ = __nccwpck_require__(9699);
-/* harmony import */ var _review__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(5888);
+/* harmony import */ var _review__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(8970);
 /* harmony import */ var _review_comment__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(8693);
 /* harmony import */ var _permission__WEBPACK_IMPORTED_MODULE_5__ = __nccwpck_require__(1489);
 
@@ -93769,7 +93769,7 @@ const handleReviewComment = async (heavyBot, options, prompts) => {
 
 /***/ }),
 
-/***/ 5888:
+/***/ 8970:
 /***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
 
 "use strict";
@@ -93970,9 +93970,31 @@ var src_inputs = __nccwpck_require__(7063);
 var octokit = __nccwpck_require__(9259);
 // EXTERNAL MODULE: ./src/tokenizer.ts
 var tokenizer = __nccwpck_require__(4008);
+;// CONCATENATED MODULE: ./src/utils.ts
+function printWithColor(variableName, variableValue, depth = null, colors = true) {
+    // 获取调用者的文件名和行号
+    const error = new Error();
+    const stack = error.stack;
+    let file = "unknown file";
+    let line = "unknown line";
+    if (stack) {
+        const callerLine = stack.split("\n")[2]; // 获取调用栈的第二行
+        const regex = /\((.*?):(\d+):\d+\)/; // 匹配文件名和行号
+        const match = regex.exec(callerLine);
+        if (match) {
+            file = match[1];
+            line = match[2];
+        }
+    }
+    // 打印颜色化的字符串和变量内容
+    console.log(`\n\n\x1b[36m%s\x1b[0m`, `Printing ${variableName}... (${file}:${line})`);
+    console.dir(variableValue, { depth, colors });
+}
+
 ;// CONCATENATED MODULE: ./src/review.ts
 
 // eslint-disable-next-line camelcase
+
 
 
 
@@ -94053,8 +94075,12 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         base: highestReviewedCommitId,
         head: context.payload.pull_request.head.sha,
     });
-    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing incrementalDiff.data.files (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>");
-    console.dir(incrementalDiff.data.files, { depth: null, colors: true });
+    // console.log(
+    //   "\n\n\x1b[36m%s\x1b[0m",
+    //   "Printing incrementalDiff.data.files (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>"
+    // );
+    // console.dir(incrementalDiff.data.files, { depth: null, colors: true });
+    printWithColor("incrementalDiff.data.files", incrementalDiff.data.files);
     // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
     const targetBranchDiff = await octokit/* octokit.repos.compareCommits */.K.repos.compareCommits({
         owner: repo.owner,
@@ -94062,8 +94088,12 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         base: context.payload.pull_request.base.sha,
         head: context.payload.pull_request.head.sha,
     });
-    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing targetBranchDiff.data.files (context.payload.pull_request.base.sha vs. context.payload.pull_request.head.sha): <review/codeReview()>");
-    console.dir(targetBranchDiff.data.files, { depth: 1, colors: true });
+    // console.log(
+    //   "\n\n\x1b[36m%s\x1b[0m",
+    //   "Printing targetBranchDiff.data.files (context.payload.pull_request.base.sha vs. context.payload.pull_request.head.sha): <review/codeReview()>"
+    // );
+    // console.dir(targetBranchDiff.data.files, { depth: 1, colors: true });
+    printWithColor("targetBranchDiff.data.files", targetBranchDiff.data.files);
     const incrementalFiles = incrementalDiff.data.files || [];
     const targetBranchFiles = targetBranchDiff.data.files || [];
     // const incrementalFiles = incrementalDiff.data.files;
@@ -94199,6 +94229,7 @@ ${filterIgnoredFiles.length > 0
 `;
     // update the existing comment with in progress status
     const inProgressSummarizeCmt = commenter.addInProgressStatus(existingSummarizeCmtBody, statusMsg);
+    printWithColor("inProgressSummarizeCmt", inProgressSummarizeCmt);
     // add in progress status to the summarize comment
     await commenter.comment(`${inProgressSummarizeCmt}`, src_commenter/* SUMMARIZE_TAG */.Rp, "replace");
     const summariesFailed = [];

@@ -18,6 +18,7 @@ import { octokit } from "./octokit";
 import { type Options } from "./options";
 import { type Prompts } from "./prompts";
 import { getTokenCount } from "./tokenizer";
+import { printWithColor } from "./utils";
 
 // eslint-disable-next-line camelcase
 const context = github_context;
@@ -106,11 +107,12 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     base: highestReviewedCommitId,
     head: context.payload.pull_request.head.sha,
   });
-  console.log(
-    "\n\n\x1b[36m%s\x1b[0m",
-    "Printing incrementalDiff.data.files (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>"
-  );
-  console.dir(incrementalDiff.data.files, { depth: null, colors: true });
+  // console.log(
+  //   "\n\n\x1b[36m%s\x1b[0m",
+  //   "Printing incrementalDiff.data.files (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>"
+  // );
+  // console.dir(incrementalDiff.data.files, { depth: null, colors: true });
+  printWithColor("incrementalDiff.data.files", incrementalDiff.data.files);
 
   // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
   const targetBranchDiff = await octokit.repos.compareCommits({
@@ -119,11 +121,12 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     base: context.payload.pull_request.base.sha,
     head: context.payload.pull_request.head.sha,
   });
-  console.log(
-    "\n\n\x1b[36m%s\x1b[0m",
-    "Printing targetBranchDiff.data.files (context.payload.pull_request.base.sha vs. context.payload.pull_request.head.sha): <review/codeReview()>"
-  );
-  console.dir(targetBranchDiff.data.files, { depth: 1, colors: true });
+  // console.log(
+  //   "\n\n\x1b[36m%s\x1b[0m",
+  //   "Printing targetBranchDiff.data.files (context.payload.pull_request.base.sha vs. context.payload.pull_request.head.sha): <review/codeReview()>"
+  // );
+  // console.dir(targetBranchDiff.data.files, { depth: 1, colors: true });
+  printWithColor("targetBranchDiff.data.files", targetBranchDiff.data.files);
 
   // 定义 GitHub 文件差异的类型
   type FileDiff = components["schemas"]["diff-entry"];
@@ -290,6 +293,7 @@ ${
 
   // update the existing comment with in progress status
   const inProgressSummarizeCmt = commenter.addInProgressStatus(existingSummarizeCmtBody, statusMsg);
+  printWithColor("inProgressSummarizeCmt", inProgressSummarizeCmt);
 
   // add in progress status to the summarize comment
   await commenter.comment(`${inProgressSummarizeCmt}`, SUMMARIZE_TAG, "replace");
