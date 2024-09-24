@@ -94083,7 +94083,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
     }
     // skip files if they are filtered out (minimatched)
     const filterSelectedFiles = [];
-    const filterIgnoredFiles = [];
+    const filterIgnoredFiles = []; // 这是通过 options.pathFilters.check() 方法过滤掉 excluded paths
     for (const file of files) {
         if (!options.checkPath(file.filename)) {
             (0,core.info)(`skip for excluded path: ${file.filename}`);
