@@ -154,7 +154,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
 
   // skip files if they are filtered out (minimatched)
   const filterSelectedFiles = [];
-  const filterIgnoredFiles = [];
+  const filterIgnoredFiles = []; // 这是通过 options.pathFilters.check() 方法过滤掉 excluded paths
   for (const file of files) {
     if (!options.checkPath(file.filename)) {
       info(`skip for excluded path: ${file.filename}`);
