@@ -44,13 +44,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     return;
   }
 
-  // 或者使用 console.dir 打印出对象的完整结构
-  // depth: null：确保显示对象的所有嵌套层级，打印出完整的结构。
-  // colors: true：让终端输出的结果带有颜色，方便阅读。
-  console.log("\n\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.pull_request: <review/codeReview(), console.dir()>");
-  console.group("context.payload.pull_request");
-  console.dir(context.payload.pull_request, { depth: 1, colors: true });
-  console.groupEnd();
+  printWithColor("context.payload.pull_request", context.payload.pull_request, 1);
 
   const inputs: Inputs = new Inputs();
   inputs.title = context.payload.pull_request.title;
@@ -73,8 +67,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   let existingSummarizeCmtBody = "";
   if (existingSummarizeCmt != null) {
     existingSummarizeCmtBody = existingSummarizeCmt.body;
-    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing existingSummarizeCmtBody = existingSummarizeCmt.body: <review/codeReview()>");
-    console.dir(existingSummarizeCmtBody, { depth: null, colors: true });
+    printWithColor("existingSummarizeCmtBody = existingSummarizeCmt.body", existingSummarizeCmtBody);
     inputs.rawSummary = commenter.getRawSummary(existingSummarizeCmtBody);
     inputs.shortSummary = commenter.getShortSummary(existingSummarizeCmtBody);
     existingCommitIdsBlock = commenter.getReviewedCommitIdsBlock(existingSummarizeCmtBody);
@@ -107,11 +100,6 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     base: highestReviewedCommitId,
     head: context.payload.pull_request.head.sha,
   });
-  // console.log(
-  //   "\n\n\x1b[36m%s\x1b[0m",
-  //   "Printing incrementalDiff.data.files (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>"
-  // );
-  // console.dir(incrementalDiff.data.files, { depth: null, colors: true });
   printWithColor("incrementalDiff.data.files", incrementalDiff.data.files);
 
   // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
@@ -121,21 +109,12 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     base: context.payload.pull_request.base.sha,
     head: context.payload.pull_request.head.sha,
   });
-  // console.log(
-  //   "\n\n\x1b[36m%s\x1b[0m",
-  //   "Printing targetBranchDiff.data.files (context.payload.pull_request.base.sha vs. context.payload.pull_request.head.sha): <review/codeReview()>"
-  // );
-  // console.dir(targetBranchDiff.data.files, { depth: 1, colors: true });
-  printWithColor("targetBranchDiff.data.files", targetBranchDiff.data.files);
+  // printWithColor("targetBranchDiff.data.files", targetBranchDiff.data.files);
 
   // 定义 GitHub 文件差异的类型
   type FileDiff = components["schemas"]["diff-entry"];
-
   const incrementalFiles: FileDiff[] = incrementalDiff.data.files || [];
   const targetBranchFiles: FileDiff[] = targetBranchDiff.data.files || [];
-
-  // const incrementalFiles = incrementalDiff.data.files;
-  // const targetBranchFiles = targetBranchDiff.data.files;
 
   if (incrementalFiles == null || targetBranchFiles == null) {
     warning("Skipped: files data is missing");
@@ -173,11 +152,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   }
 
   const commits = incrementalDiff.data.commits;
-  console.log(
-    "\n\n\x1b[36m%s\x1b[0m",
-    "Printing incrementalDiff.data.commits (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>"
-  );
-  console.dir(incrementalDiff.data.commits, { depth: null, colors: true });
+  printWithColor("incrementalDiff.data.commits (highestReviewedCommitId vs. context.payload.pull_request.head.sha)", incrementalDiff.data.commits);
 
   if (commits.length === 0) {
     warning("Skipped: commits is null");
@@ -292,14 +267,16 @@ ${
 `;
 
   // update the existing comment with in progress status
+  printWithColor("existingSummarizeCmtBody", existingSummarizeCmtBody);
   const inProgressSummarizeCmt = commenter.addInProgressStatus(existingSummarizeCmtBody, statusMsg);
-  printWithColor("inProgressSummarizeCmt", inProgressSummarizeCmt);
+  printWithColor("inProgressSummarizeCmt = commenter.addInProgressStatus(existingSummarizeCmtBody, statusMsg)", inProgressSummarizeCmt);
 
   // add in progress status to the summarize comment
   await commenter.comment(`${inProgressSummarizeCmt}`, SUMMARIZE_TAG, "replace");
 
   const summariesFailed: string[] = [];
 
+  // doSummary 是一个异步函数，用于对文件差异（fileDiff）进行总结，判断文件是否需要进一步的审查，并返回总结的结果。如果出现问题或某些条件不满足，会提前返回 null。
   const doSummary = async (filename: string, fileContent: string, fileDiff: string): Promise<[string, string, boolean] | null> => {
     info(`summarize: ${filename}`);
     const ins = inputs.clone();

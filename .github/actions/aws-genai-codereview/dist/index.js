@@ -86579,8 +86579,10 @@ class Bot {
 /* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(5438);
 /* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__nccwpck_require__.n(_actions_github__WEBPACK_IMPORTED_MODULE_1__);
 /* harmony import */ var _octokit__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(9259);
+/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(1314);
 
 // eslint-disable-next-line camelcase
+
 
 
 // eslint-disable-next-line camelcase
@@ -86618,19 +86620,16 @@ class Commenter {
         }
         else if (context.payload.issue != null) {
             target = context.payload.issue.number;
-            // Print info for debuging
-            console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.issue: <review/codeReview(), console.dir()>");
-            console.group("context.payload.issue");
-            console.dir(context.payload.issue, { depth: 1, colors: true });
-            console.groupEnd();
         }
         else {
             (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)("Skipped: context.payload.pull_request and context.payload.issue are both null");
             return;
         }
+        (0,_utils__WEBPACK_IMPORTED_MODULE_3__/* .printWithColor */ .N)("target (Pull request number OR Issue number", target);
         if (!tag) {
             tag = COMMENT_TAG;
         }
+        (0,_utils__WEBPACK_IMPORTED_MODULE_3__/* .printWithColor */ .N)("tag", tag);
         const body = `${COMMENT_GREETING}
 
 ${message}
@@ -87046,6 +87045,7 @@ ${chain}
         try {
             const cmt = await this.findCommentWithTag(tag, target);
             if (cmt) {
+                (0,_utils__WEBPACK_IMPORTED_MODULE_3__/* .printWithColor */ .N)("cmt", cmt);
                 await _octokit__WEBPACK_IMPORTED_MODULE_2__/* .octokit.issues.updateComment */ .K.issues.updateComment({
                     owner: repo.owner,
                     repo: repo.repo,
@@ -87062,6 +87062,7 @@ ${chain}
             (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)(`Failed to replace comment: ${e}`);
         }
     }
+    // 查找某个 GitHub issue（或 pull request）的评论中，包含特定标签 (tag) 的评论。如果找到包含该标签的评论，则返回该评论；如果未找到或出现错误，则返回 null。
     async findCommentWithTag(tag, target) {
         try {
             const comments = await this.listComments(target);
@@ -87078,6 +87079,7 @@ ${chain}
         }
     }
     issueCommentsCache = {};
+    // 从 GitHub 获取指定 issue 的所有评论，并缓存结果，以便后续请求不需要再次调用 API。
     async listComments(target) {
         if (this.issueCommentsCache[target]) {
             return this.issueCommentsCache[target];
@@ -87085,7 +87087,9 @@ ${chain}
         const allComments = [];
         let page = 1;
         try {
+            // 循环获取：使用无限循环 for (;;)，不断通过 GitHub API 获取 issue 的评论，每次获取最多 100 条评论。
             for (;;) {
+                // 分页处理：通过 page 参数控制当前获取的页码，调用 octokit.issues.listComments 获取评论。
                 const { data: comments } = await _octokit__WEBPACK_IMPORTED_MODULE_2__/* .octokit.issues.listComments */ .K.issues.listComments({
                     owner: repo.owner,
                     repo: repo.repo,
@@ -87097,11 +87101,16 @@ ${chain}
                 });
                 allComments.push(...comments);
                 page++;
+                //  如果获取到的评论数量少于 100，说明已经是最后一页，终止循环。否则，将评论添加到 allComments 中，并继续请求下一页。
                 if (!comments || comments.length < 100) {
                     break;
                 }
             }
+            // 将获取到的评论缓存到 this.issueCommentsCache 中，下次请求时可以直接使用缓存。
             this.issueCommentsCache[target] = allComments;
+            if (allComments[0]) {
+                (0,_utils__WEBPACK_IMPORTED_MODULE_3__/* .printWithColor */ .N)("allComments[0]", allComments[0]);
+            } // for debug purpose
             return allComments;
         }
         catch (e) {
@@ -87226,7 +87235,7 @@ __nccwpck_require__.r(__webpack_exports__);
 /* harmony import */ var _bot__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(6229);
 /* harmony import */ var _options__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(1035);
 /* harmony import */ var _prompts__WEBPACK_IMPORTED_MODULE_6__ = __nccwpck_require__(9699);
-/* harmony import */ var _review__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(8970);
+/* harmony import */ var _review__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(5888);
 /* harmony import */ var _review_comment__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(8693);
 /* harmony import */ var _permission__WEBPACK_IMPORTED_MODULE_5__ = __nccwpck_require__(1489);
 
@@ -93769,7 +93778,7 @@ const handleReviewComment = async (heavyBot, options, prompts) => {
 
 /***/ }),
 
-/***/ 8970:
+/***/ 5888:
 /***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
 
 "use strict";
@@ -93970,27 +93979,8 @@ var src_inputs = __nccwpck_require__(7063);
 var octokit = __nccwpck_require__(9259);
 // EXTERNAL MODULE: ./src/tokenizer.ts
 var tokenizer = __nccwpck_require__(4008);
-;// CONCATENATED MODULE: ./src/utils.ts
-function printWithColor(variableName, variableValue, depth = null, colors = true) {
-    // 获取调用者的文件名和行号
-    const error = new Error();
-    const stack = error.stack;
-    let file = "unknown file";
-    let line = "unknown line";
-    if (stack) {
-        const callerLine = stack.split("\n")[2]; // 获取调用栈的第二行
-        const regex = /\((.*?):(\d+):\d+\)/; // 匹配文件名和行号
-        const match = regex.exec(callerLine);
-        if (match) {
-            file = match[1];
-            line = match[2];
-        }
-    }
-    // 打印颜色化的字符串和变量内容
-    console.log(`\n\n\x1b[36m%s\x1b[0m`, `Printing ${variableName}... (${file}:${line})`);
-    console.dir(variableValue, { depth, colors });
-}
-
+// EXTERNAL MODULE: ./src/utils.ts
+var utils = __nccwpck_require__(1314);
 ;// CONCATENATED MODULE: ./src/review.ts
 
 // eslint-disable-next-line camelcase
@@ -94019,13 +94009,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         (0,core.warning)("Skipped: context.payload.pull_request is null");
         return;
     }
-    // 或者使用 console.dir 打印出对象的完整结构
-    // depth: null：确保显示对象的所有嵌套层级，打印出完整的结构。
-    // colors: true：让终端输出的结果带有颜色，方便阅读。
-    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.pull_request: <review/codeReview(), console.dir()>");
-    console.group("context.payload.pull_request");
-    console.dir(context.payload.pull_request, { depth: 1, colors: true });
-    console.groupEnd();
+    (0,utils/* printWithColor */.N)("context.payload.pull_request", context.payload.pull_request, 1);
     const inputs = new src_inputs/* Inputs */.k();
     inputs.title = context.payload.pull_request.title;
     if (context.payload.pull_request.body != null) {
@@ -94044,8 +94028,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
     let existingSummarizeCmtBody = "";
     if (existingSummarizeCmt != null) {
         existingSummarizeCmtBody = existingSummarizeCmt.body;
-        console.log("\n\n\x1b[36m%s\x1b[0m", "Printing existingSummarizeCmtBody = existingSummarizeCmt.body: <review/codeReview()>");
-        console.dir(existingSummarizeCmtBody, { depth: null, colors: true });
+        (0,utils/* printWithColor */.N)("existingSummarizeCmtBody = existingSummarizeCmt.body", existingSummarizeCmtBody);
         inputs.rawSummary = commenter.getRawSummary(existingSummarizeCmtBody);
         inputs.shortSummary = commenter.getShortSummary(existingSummarizeCmtBody);
         existingCommitIdsBlock = commenter.getReviewedCommitIdsBlock(existingSummarizeCmtBody);
@@ -94075,12 +94058,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         base: highestReviewedCommitId,
         head: context.payload.pull_request.head.sha,
     });
-    // console.log(
-    //   "\n\n\x1b[36m%s\x1b[0m",
-    //   "Printing incrementalDiff.data.files (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>"
-    // );
-    // console.dir(incrementalDiff.data.files, { depth: null, colors: true });
-    printWithColor("incrementalDiff.data.files", incrementalDiff.data.files);
+    (0,utils/* printWithColor */.N)("incrementalDiff.data.files", incrementalDiff.data.files);
     // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
     const targetBranchDiff = await octokit/* octokit.repos.compareCommits */.K.repos.compareCommits({
         owner: repo.owner,
@@ -94088,16 +94066,8 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         base: context.payload.pull_request.base.sha,
         head: context.payload.pull_request.head.sha,
     });
-    // console.log(
-    //   "\n\n\x1b[36m%s\x1b[0m",
-    //   "Printing targetBranchDiff.data.files (context.payload.pull_request.base.sha vs. context.payload.pull_request.head.sha): <review/codeReview()>"
-    // );
-    // console.dir(targetBranchDiff.data.files, { depth: 1, colors: true });
-    printWithColor("targetBranchDiff.data.files", targetBranchDiff.data.files);
     const incrementalFiles = incrementalDiff.data.files || [];
     const targetBranchFiles = targetBranchDiff.data.files || [];
-    // const incrementalFiles = incrementalDiff.data.files;
-    // const targetBranchFiles = targetBranchDiff.data.files;
     if (incrementalFiles == null || targetBranchFiles == null) {
         (0,core.warning)("Skipped: files data is missing");
         return;
@@ -94128,8 +94098,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         return;
     }
     const commits = incrementalDiff.data.commits;
-    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing incrementalDiff.data.commits (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>");
-    console.dir(incrementalDiff.data.commits, { depth: null, colors: true });
+    (0,utils/* printWithColor */.N)("incrementalDiff.data.commits (highestReviewedCommitId vs. context.payload.pull_request.head.sha)", incrementalDiff.data.commits);
     if (commits.length === 0) {
         (0,core.warning)("Skipped: commits is null");
         return;
@@ -94228,11 +94197,13 @@ ${filterIgnoredFiles.length > 0
         : ""}
 `;
     // update the existing comment with in progress status
+    (0,utils/* printWithColor */.N)("existingSummarizeCmtBody", existingSummarizeCmtBody);
     const inProgressSummarizeCmt = commenter.addInProgressStatus(existingSummarizeCmtBody, statusMsg);
-    printWithColor("inProgressSummarizeCmt", inProgressSummarizeCmt);
+    (0,utils/* printWithColor */.N)("inProgressSummarizeCmt = commenter.addInProgressStatus(existingSummarizeCmtBody, statusMsg)", inProgressSummarizeCmt);
     // add in progress status to the summarize comment
     await commenter.comment(`${inProgressSummarizeCmt}`, src_commenter/* SUMMARIZE_TAG */.Rp, "replace");
     const summariesFailed = [];
+    // doSummary 是一个异步函数，用于对文件差异（fileDiff）进行总结，判断文件是否需要进一步的审查，并返回总结的结果。如果出现问题或某些条件不满足，会提前返回 null。
     const doSummary = async (filename, fileContent, fileDiff) => {
         (0,core.info)(`summarize: ${filename}`);
         const ins = inputs.clone();
@@ -94701,6 +94672,43 @@ function encode(input) {
 function getTokenCount(input) {
     input = input.replace(/<\|endoftext\|>/g, '');
     return encode(input).length;
+}
+
+
+/***/ }),
+
+/***/ 1314:
+/***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
+
+"use strict";
+/* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
+/* harmony export */   "N": () => (/* binding */ printWithColor)
+/* harmony export */ });
+/* harmony import */ var path__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(1017);
+/* harmony import */ var path__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__nccwpck_require__.n(path__WEBPACK_IMPORTED_MODULE_0__);
+
+function printWithColor(variableName, variableValue, depth = null, colors = true) {
+    // 获取调用者的文件名和行号
+    const error = new Error();
+    const stack = error.stack;
+    let file = "unknown file";
+    let line = "unknown line";
+    if (stack) {
+        const callerLine = stack.split("\n")[2]; // 获取调用栈的第二行
+        const regex = /\((.*?):(\d+):\d+\)/; // 匹配文件名和行号
+        const match = regex.exec(callerLine);
+        if (match) {
+            // file = match[1]; //这个写法会包含完整路径，如/home/runner/work/github-actions-cicd/github-actions-cicd/.github/actions/aws-genai-codereview/src/review.ts
+            file = path__WEBPACK_IMPORTED_MODULE_0___default().basename(match[1]); // 使用 path.basename 只提取文件名，不包括路径，如review.ts
+            line = match[2];
+        }
+    }
+    // 打印颜色化的字符串和变量内容
+    // 使用 console.dir 打印出对象的完整结构，比console.log好的地方是打印出来的对象的属性值含有颜色
+    // depth: null：确保显示对象的所有嵌套层级，打印出完整的结构。
+    // colors: true：让终端输出的结果带有颜色，方便阅读。
+    console.log(`\n\n\x1b[36m%s\x1b[0m`, `Printing ${variableName}... (${file}:${line})`);
+    console.dir(variableValue, { depth, colors });
 }
 
 
