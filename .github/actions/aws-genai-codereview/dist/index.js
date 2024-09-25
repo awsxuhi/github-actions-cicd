@@ -86579,8 +86579,10 @@ class Bot {
 /* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(5438);
 /* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__nccwpck_require__.n(_actions_github__WEBPACK_IMPORTED_MODULE_1__);
 /* harmony import */ var _octokit__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(9259);
+/* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(1314);
 
 // eslint-disable-next-line camelcase
+
 
 
 // eslint-disable-next-line camelcase
@@ -86618,19 +86620,16 @@ class Commenter {
         }
         else if (context.payload.issue != null) {
             target = context.payload.issue.number;
-            // Print info for debuging
-            console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.issue: <review/codeReview(), console.dir()>");
-            console.group("context.payload.issue");
-            console.dir(context.payload.issue, { depth: 1, colors: true });
-            console.groupEnd();
         }
         else {
             (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)("Skipped: context.payload.pull_request and context.payload.issue are both null");
             return;
         }
+        (0,_utils__WEBPACK_IMPORTED_MODULE_3__/* .printWithColor */ .N)("target (Pull request number OR Issue number", target);
         if (!tag) {
             tag = COMMENT_TAG;
         }
+        (0,_utils__WEBPACK_IMPORTED_MODULE_3__/* .printWithColor */ .N)("tag", tag);
         const body = `${COMMENT_GREETING}
 
 ${message}
@@ -87046,6 +87045,7 @@ ${chain}
         try {
             const cmt = await this.findCommentWithTag(tag, target);
             if (cmt) {
+                (0,_utils__WEBPACK_IMPORTED_MODULE_3__/* .printWithColor */ .N)("cmt", cmt);
                 await _octokit__WEBPACK_IMPORTED_MODULE_2__/* .octokit.issues.updateComment */ .K.issues.updateComment({
                     owner: repo.owner,
                     repo: repo.repo,
@@ -87062,6 +87062,7 @@ ${chain}
             (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.warning)(`Failed to replace comment: ${e}`);
         }
     }
+    // 查找某个 GitHub issue（或 pull request）的评论中，包含特定标签 (tag) 的评论。如果找到包含该标签的评论，则返回该评论；如果未找到或出现错误，则返回 null。
     async findCommentWithTag(tag, target) {
         try {
             const comments = await this.listComments(target);
@@ -87078,6 +87079,7 @@ ${chain}
         }
     }
     issueCommentsCache = {};
+    // 从 GitHub 获取指定 issue 的所有评论，并缓存结果，以便后续请求不需要再次调用 API。
     async listComments(target) {
         if (this.issueCommentsCache[target]) {
             return this.issueCommentsCache[target];
@@ -87085,7 +87087,9 @@ ${chain}
         const allComments = [];
         let page = 1;
         try {
+            // 循环获取：使用无限循环 for (;;)，不断通过 GitHub API 获取 issue 的评论，每次获取最多 100 条评论。
             for (;;) {
+                // 分页处理：通过 page 参数控制当前获取的页码，调用 octokit.issues.listComments 获取评论。
                 const { data: comments } = await _octokit__WEBPACK_IMPORTED_MODULE_2__/* .octokit.issues.listComments */ .K.issues.listComments({
                     owner: repo.owner,
                     repo: repo.repo,
@@ -87097,11 +87101,16 @@ ${chain}
                 });
                 allComments.push(...comments);
                 page++;
+                //  如果获取到的评论数量少于 100，说明已经是最后一页，终止循环。否则，将评论添加到 allComments 中，并继续请求下一页。
                 if (!comments || comments.length < 100) {
                     break;
                 }
             }
+            // 将获取到的评论缓存到 this.issueCommentsCache 中，下次请求时可以直接使用缓存。
             this.issueCommentsCache[target] = allComments;
+            if (allComments[0]) {
+                (0,_utils__WEBPACK_IMPORTED_MODULE_3__/* .printWithColor */ .N)("allComments[0]", allComments[0], 1);
+            } // for debug purpose
             return allComments;
         }
         catch (e) {
@@ -93970,9 +93979,12 @@ var src_inputs = __nccwpck_require__(7063);
 var octokit = __nccwpck_require__(9259);
 // EXTERNAL MODULE: ./src/tokenizer.ts
 var tokenizer = __nccwpck_require__(4008);
+// EXTERNAL MODULE: ./src/utils.ts
+var utils = __nccwpck_require__(1314);
 ;// CONCATENATED MODULE: ./src/review.ts
 
 // eslint-disable-next-line camelcase
+
 
 
 
@@ -93997,13 +94009,91 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         (0,core.warning)("Skipped: context.payload.pull_request is null");
         return;
     }
-    // 或者使用 console.dir 打印出对象的完整结构
-    // depth: null：确保显示对象的所有嵌套层级，打印出完整的结构。
-    // colors: true：让终端输出的结果带有颜色，方便阅读。
-    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.pull_request: <review/codeReview(), console.dir()>");
-    console.group("context.payload.pull_request");
-    console.dir(context.payload.pull_request, { depth: 1, colors: true });
-    console.groupEnd();
+    // printWithColor("context.payload.pull_request", context.payload.pull_request);
+    /*
+  这段代码中的变量都来源于 `context.payload.pull_request`，它们表示一个 Pull Request 的相关信息。每个字段都对应 Pull Request 不同的属性和内容，以下是具体解释：
+  
+  1. **`title`**：
+     表示 Pull Request 的标题，即用户在创建 Pull Request 时输入的简短描述。通常用来概括 Pull Request 的主要变更或目的。
+  
+  2. **`number`**：
+     表示 Pull Request 的编号。这是一个 GitHub 仓库中唯一的数字，用来标识这个 Pull Request。在该仓库中每个新的 Pull Request 会自动分配一个递增的编号。
+  
+  3. **`diff_url`**：
+     表示一个 URL，链接到 Pull Request 的 `diff` 文件。这个文件展示了 Pull Request 中的代码差异，采用 `diff` 格式显示修改内容。
+  
+  4. **`patch_url`**：
+     表示一个 URL，链接到 Pull Request 的 `patch` 文件。这个文件包含的是 Pull Request 的补丁信息，可以直接应用到代码仓库中，用来将 Pull Request 中的修改合并到本地仓库。
+  
+  5. **`review_comments`**：
+     表示 Pull Request 中代码审查评论的数量。代码审查评论是针对具体的代码行或代码块进行的评论，通常是由代码审查者提出的。
+  
+  6. **`review_comments_url`**：
+     表示一个 URL，链接到 Pull Request 的代码审查评论的 API 端点。通过这个 URL 可以获取或操作与代码审查相关的评论。
+  
+  7. **`comments`**：
+     表示 Pull Request 的常规评论数量。这些评论通常与代码无关，而是对 Pull Request 进行的整体讨论或反馈。
+  
+  8. **`comments_url`**：
+     表示一个 URL，链接到 Pull Request 的评论 API 端点。通过这个 URL 可以获取或操作 Pull Request 的常规评论。
+  
+  9. **`commits`**：
+     表示 Pull Request 中包含的提交（commit）数量。一个 Pull Request 可以包含多个代码提交。
+  
+  10. **`commits_url`**：
+      表示一个 URL，链接到 Pull Request 的提交 API 端点。通过这个 URL 可以获取该 Pull Request 中的所有提交信息。
+  
+  11. **`body`**：
+      表示 Pull Request 的正文内容，通常是用户在创建 Pull Request 时写的描述性文字。这个字段确实是特指 Pull Request 创建时的第一条帖子内容，通常包含更详细的解释或上下文，说明 Pull Request 的目的、改动的细节、需要注意的问题等。
+  
+  ---
+  
+  **`comments` 和 `review_comments` 的区别：**
+  - **`comments`** 是指 Pull Request 整体下的讨论，用户可以在 Pull Request 中发表评论，这些评论是和具体的代码无关的讨论。
+  - **`review_comments`** 则是代码审查者在审查代码时对特定代码行或文件作出的评论。它是基于代码的反馈和讨论，而不是整个 Pull Request。
+  
+  总结来说，`comments` 更加广泛地适用于整个 Pull Request，而 `review_comments` 是精确到代码行的讨论。q
+    */
+    (0,utils/* printWithColor */.N)("context.payload.pull_request", {
+        _links: context.payload.pull_request._links,
+        base: {
+            label: context.payload.pull_request.base.label,
+            ref: context.payload.pull_request.base.ref,
+            sha: context.payload.pull_request.base.sha,
+        },
+        head: {
+            label: context.payload.pull_request.head.label,
+            ref: context.payload.pull_request.head.ref,
+            sha: context.payload.pull_request.head.sha,
+        },
+        repo: {
+            owner: {
+                login: context.payload.pull_request.base.repo.owner.login,
+                type: context.payload.pull_request.base.repo.owner.type,
+            },
+            name: context.payload.pull_request.base.repo.name,
+        },
+        title: context.payload.pull_request.title,
+        number: context.payload.pull_request.number,
+        diff_url: context.payload.pull_request.diff_url,
+        patch_url: context.payload.pull_request.patch_url,
+        review_comments: context.payload.pull_request.review_comments,
+        review_comments_url: context.payload.pull_request.review_comments_url,
+        comments: context.payload.pull_request.comments,
+        comments_url: context.payload.pull_request.comments_url,
+        commits: context.payload.pull_request.commits,
+        commits_url: context.payload.pull_request.commits_url,
+        body: context.payload.pull_request.body,
+    });
+    // xuhi: added this to get the diff of the PR
+    // getDiffString的值是一个字符串，就是diff_url链接的网页显示的内容
+    const { data: getDiffString } = await octokit/* octokit.pulls.get */.K.pulls.get({
+        owner: context.payload.pull_request.base.repo.owner.login,
+        repo: context.payload.pull_request.base.repo.name,
+        pull_number: context.payload.pull_request.number,
+        mediaType: { format: "diff" },
+    });
+    (0,utils/* printWithColor */.N)("getDiff", getDiffString);
     const inputs = new src_inputs/* Inputs */.k();
     inputs.title = context.payload.pull_request.title;
     if (context.payload.pull_request.body != null) {
@@ -94022,8 +94112,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
     let existingSummarizeCmtBody = "";
     if (existingSummarizeCmt != null) {
         existingSummarizeCmtBody = existingSummarizeCmt.body;
-        console.log("\n\n\x1b[36m%s\x1b[0m", "Printing existingSummarizeCmtBody = existingSummarizeCmt.body: <review/codeReview()>");
-        console.dir(existingSummarizeCmtBody, { depth: null, colors: true });
+        (0,utils/* printWithColor */.N)("existingSummarizeCmtBody = existingSummarizeCmt.body", existingSummarizeCmtBody);
         inputs.rawSummary = commenter.getRawSummary(existingSummarizeCmtBody);
         inputs.shortSummary = commenter.getShortSummary(existingSummarizeCmtBody);
         existingCommitIdsBlock = commenter.getReviewedCommitIdsBlock(existingSummarizeCmtBody);
@@ -94053,8 +94142,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         base: highestReviewedCommitId,
         head: context.payload.pull_request.head.sha,
     });
-    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing incrementalDiff.data.files (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>");
-    console.dir(incrementalDiff.data.files, { depth: null, colors: true });
+    (0,utils/* printWithColor */.N)("incrementalDiff.data.files", incrementalDiff.data.files?.slice(0, 3));
     // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
     const targetBranchDiff = await octokit/* octokit.repos.compareCommits */.K.repos.compareCommits({
         owner: repo.owner,
@@ -94062,12 +94150,8 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         base: context.payload.pull_request.base.sha,
         head: context.payload.pull_request.head.sha,
     });
-    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing targetBranchDiff.data.files (context.payload.pull_request.base.sha vs. context.payload.pull_request.head.sha): <review/codeReview()>");
-    console.dir(targetBranchDiff.data.files, { depth: 1, colors: true });
     const incrementalFiles = incrementalDiff.data.files || [];
     const targetBranchFiles = targetBranchDiff.data.files || [];
-    // const incrementalFiles = incrementalDiff.data.files;
-    // const targetBranchFiles = targetBranchDiff.data.files;
     if (incrementalFiles == null || targetBranchFiles == null) {
         (0,core.warning)("Skipped: files data is missing");
         return;
@@ -94083,7 +94167,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
     }
     // skip files if they are filtered out (minimatched)
     const filterSelectedFiles = [];
-    const filterIgnoredFiles = [];
+    const filterIgnoredFiles = []; // 这是通过 options.pathFilters.check() 方法过滤掉 excluded paths
     for (const file of files) {
         if (!options.checkPath(file.filename)) {
             (0,core.info)(`skip for excluded path: ${file.filename}`);
@@ -94098,8 +94182,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         return;
     }
     const commits = incrementalDiff.data.commits;
-    console.log("\n\n\x1b[36m%s\x1b[0m", "Printing incrementalDiff.data.commits (highestReviewedCommitId vs. context.payload.pull_request.head.sha): <review/codeReview()>");
-    console.dir(incrementalDiff.data.commits, { depth: null, colors: true });
+    (0,utils/* printWithColor */.N)("incrementalDiff.data.commits (highestReviewedCommitId vs. context.payload.pull_request.head.sha)", incrementalDiff.data.commits);
     if (commits.length === 0) {
         (0,core.warning)("Skipped: commits is null");
         return;
@@ -94198,10 +94281,13 @@ ${filterIgnoredFiles.length > 0
         : ""}
 `;
     // update the existing comment with in progress status
+    (0,utils/* printWithColor */.N)("existingSummarizeCmtBody", existingSummarizeCmtBody);
     const inProgressSummarizeCmt = commenter.addInProgressStatus(existingSummarizeCmtBody, statusMsg);
+    (0,utils/* printWithColor */.N)("inProgressSummarizeCmt = commenter.addInProgressStatus(existingSummarizeCmtBody, statusMsg)", inProgressSummarizeCmt);
     // add in progress status to the summarize comment
     await commenter.comment(`${inProgressSummarizeCmt}`, src_commenter/* SUMMARIZE_TAG */.Rp, "replace");
     const summariesFailed = [];
+    // doSummary 是一个异步函数，用于对文件差异（fileDiff）进行总结，判断文件是否需要进一步的审查，并返回总结的结果。如果出现问题或某些条件不满足，会提前返回 null。
     const doSummary = async (filename, fileContent, fileDiff) => {
         (0,core.info)(`summarize: ${filename}`);
         const ins = inputs.clone();
@@ -94256,6 +94342,9 @@ ${filterIgnoredFiles.length > 0
     const summaryPromises = [];
     const skippedFiles = [];
     for (const [filename, fileContent, fileDiff] of filesAndChanges) {
+        (0,utils/* printWithColor */.N)("filename", filename);
+        (0,utils/* printWithColor */.N)("fileContent", fileContent);
+        (0,utils/* printWithColor */.N)("fileDiff", fileDiff);
         if (options.maxFiles <= 0 || summaryPromises.length < options.maxFiles) {
             summaryPromises.push(bedrockConcurrencyLimit(async () => await doSummary(filename, fileContent, fileDiff)));
         }
@@ -94670,6 +94759,43 @@ function encode(input) {
 function getTokenCount(input) {
     input = input.replace(/<\|endoftext\|>/g, '');
     return encode(input).length;
+}
+
+
+/***/ }),
+
+/***/ 1314:
+/***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
+
+"use strict";
+/* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
+/* harmony export */   "N": () => (/* binding */ printWithColor)
+/* harmony export */ });
+/* harmony import */ var path__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(1017);
+/* harmony import */ var path__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__nccwpck_require__.n(path__WEBPACK_IMPORTED_MODULE_0__);
+
+function printWithColor(variableName, variableValue, depth = null, colors = true) {
+    // 获取调用者的文件名和行号
+    const error = new Error();
+    const stack = error.stack;
+    let file = "unknown file";
+    let line = "unknown line";
+    if (stack) {
+        const callerLine = stack.split("\n")[2]; // 获取调用栈的第二行
+        const regex = /\((.*?):(\d+):\d+\)/; // 匹配文件名和行号
+        const match = regex.exec(callerLine);
+        if (match) {
+            // file = match[1]; //这个写法会包含完整路径，如/home/runner/work/github-actions-cicd/github-actions-cicd/.github/actions/aws-genai-codereview/src/review.ts
+            file = path__WEBPACK_IMPORTED_MODULE_0___default().basename(match[1]); // 使用 path.basename 只提取文件名，不包括路径，如review.ts
+            line = match[2];
+        }
+    }
+    // 打印颜色化的字符串和变量内容
+    // 使用 console.dir 打印出对象的完整结构，比console.log好的地方是打印出来的对象的属性值含有颜色
+    // depth: null：确保显示对象的所有嵌套层级，打印出完整的结构。
+    // colors: true：让终端输出的结果带有颜色，方便阅读。
+    console.log(`\n\n\x1b[36m%s\x1b[0m`, `Printing ${variableName} <${file}:${line}>`);
+    console.dir(variableValue, { depth, colors });
 }
 
 

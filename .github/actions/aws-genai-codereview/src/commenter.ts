@@ -2,6 +2,7 @@ import { info, warning } from "@actions/core";
 // eslint-disable-next-line camelcase
 import { context as github_context } from "@actions/github";
 import { octokit } from "./octokit";
+import { printWithColor } from "./utils";
 
 // eslint-disable-next-line camelcase
 const context = github_context;
@@ -50,19 +51,16 @@ export class Commenter {
       target = context.payload.pull_request.number;
     } else if (context.payload.issue != null) {
       target = context.payload.issue.number;
-      // Print info for debuging
-      console.log("\n\x1b[36m%s\x1b[0m", "Printing the object of context.payload.issue: <review/codeReview(), console.dir()>");
-      console.group("context.payload.issue");
-      console.dir(context.payload.issue, { depth: 1, colors: true });
-      console.groupEnd();
     } else {
       warning("Skipped: context.payload.pull_request and context.payload.issue are both null");
       return;
     }
+    printWithColor("target (Pull request number OR Issue number", target);
 
     if (!tag) {
       tag = COMMENT_TAG;
     }
+    printWithColor("tag", tag);
 
     const body = `${COMMENT_GREETING}
 
@@ -517,6 +515,7 @@ ${chain}
     try {
       const cmt = await this.findCommentWithTag(tag, target);
       if (cmt) {
+        printWithColor("cmt", cmt);
         await octokit.issues.updateComment({
           owner: repo.owner,
           repo: repo.repo,
@@ -532,6 +531,7 @@ ${chain}
     }
   }
 
+  // 查找某个 GitHub issue（或 pull request）的评论中，包含特定标签 (tag) 的评论。如果找到包含该标签的评论，则返回该评论；如果未找到或出现错误，则返回 null。
   async findCommentWithTag(tag: string, target: number) {
     try {
       const comments = await this.listComments(target);
@@ -550,6 +550,7 @@ ${chain}
 
   private issueCommentsCache: Record<number, any[]> = {};
 
+  // 从 GitHub 获取指定 issue 的所有评论，并缓存结果，以便后续请求不需要再次调用 API。
   async listComments(target: number) {
     if (this.issueCommentsCache[target]) {
       return this.issueCommentsCache[target];
@@ -558,7 +559,10 @@ ${chain}
     const allComments: any[] = [];
     let page = 1;
     try {
+      // 循环获取：使用无限循环 for (;;)，不断通过 GitHub API 获取 issue 的评论，每次获取最多 100 条评论。
+
       for (;;) {
+        // 分页处理：通过 page 参数控制当前获取的页码，调用 octokit.issues.listComments 获取评论。
         const { data: comments } = await octokit.issues.listComments({
           owner: repo.owner,
           repo: repo.repo,
@@ -570,12 +574,18 @@ ${chain}
         });
         allComments.push(...comments);
         page++;
+
+        //  如果获取到的评论数量少于 100，说明已经是最后一页，终止循环。否则，将评论添加到 allComments 中，并继续请求下一页。
         if (!comments || comments.length < 100) {
           break;
         }
       }
 
+      // 将获取到的评论缓存到 this.issueCommentsCache 中，下次请求时可以直接使用缓存。
       this.issueCommentsCache[target] = allComments;
+      if (allComments[0]) {
+        printWithColor("allComments[0]", allComments[0], 1);
+      } // for debug purpose
       return allComments;
     } catch (e: any) {
       warning(`Failed to list comments: ${e}`);
