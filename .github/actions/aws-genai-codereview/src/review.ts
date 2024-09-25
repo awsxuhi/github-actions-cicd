@@ -119,9 +119,9 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     commits: context.payload.pull_request.commits,
     commits_url: context.payload.pull_request.commits_url,
     before: context.payload.pull_request.before,
-    after: context.payload.pull_request.after,
-    body: context.payload.pull_request.body,
   });
+
+  printWithColor("context.payload", context.payload);
 
   // xuhi: added this to get the diff of the PR
   // getDiffString的值是一个字符串，就是diff_url链接的网页显示的内容
