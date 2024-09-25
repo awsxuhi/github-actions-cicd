@@ -94047,15 +94047,15 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
     });
     // xuhi: added this to get the diff of the PR
     const { data: getDiffString } = await octokit/* octokit.pulls.get */.K.pulls.get({
-        owner: context.payload.pull_request.repo.owner.login,
-        repo: context.payload.pull_request.repo.name,
+        owner: context.payload.pull_request.base.repo.owner.login,
+        repo: context.payload.pull_request.base.repo.name,
         pull_number: context.payload.pull_request.number,
         mediaType: { format: "diff" },
     });
     (0,utils/* printWithColor */.N)("getDiff", getDiffString);
     const { data: getDiffJson } = await octokit/* octokit.pulls.get */.K.pulls.get({
-        owner: context.payload.pull_request.repo.owner.login,
-        repo: context.payload.pull_request.repo.name,
+        owner: context.payload.pull_request.base.repo.owner.login,
+        repo: context.payload.pull_request.base.repo.name,
         pull_number: context.payload.pull_request.number,
     });
     (0,utils/* printWithColor */.N)("getDiff", getDiffJson);
