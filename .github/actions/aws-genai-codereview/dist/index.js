@@ -87109,7 +87109,7 @@ ${chain}
             // 将获取到的评论缓存到 this.issueCommentsCache 中，下次请求时可以直接使用缓存。
             this.issueCommentsCache[target] = allComments;
             if (allComments[0]) {
-                (0,_utils__WEBPACK_IMPORTED_MODULE_3__/* .printWithColor */ .N)("allComments[0]", allComments[0]);
+                (0,_utils__WEBPACK_IMPORTED_MODULE_3__/* .printWithColor */ .N)("allComments[0]", allComments[0], 1);
             } // for debug purpose
             return allComments;
         }
@@ -94009,11 +94009,6 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         (0,core.warning)("Skipped: context.payload.pull_request is null");
         return;
     }
-    // const toPrintContextPayloadPullRequest = context.payload.pull_request.map((item: unknown) => {
-    //   const { base, body } = item as { base?: unknown; body?: unknown }; // 仅提取 name 和 age 属性
-    //   return { base, body }; // 返回包含指定属性的对象
-    // });
-    // printWithColor("context.payload.pull_request", toPrintContextPayloadPullRequest);
     // printWithColor(
     //   "context.payload.pull_request",
     //   context.payload.pull_request.map(({ base, body }: { base: unknown; body: unknown }) => ({ base, body }))
@@ -94021,7 +94016,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
     (0,utils/* printWithColor */.N)("context.payload.pull_request", {
         base: context.payload.pull_request.base,
         body: context.payload.pull_request.body,
-    });
+    }, 2);
     const inputs = new src_inputs/* Inputs */.k();
     inputs.title = context.payload.pull_request.title;
     if (context.payload.pull_request.body != null) {
@@ -94070,7 +94065,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         base: highestReviewedCommitId,
         head: context.payload.pull_request.head.sha,
     });
-    (0,utils/* printWithColor */.N)("incrementalDiff.data.files", incrementalDiff.data.files);
+    (0,utils/* printWithColor */.N)("incrementalDiff.data.files", incrementalDiff.data.files?.slice(0, 3));
     // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
     const targetBranchDiff = await octokit/* octokit.repos.compareCommits */.K.repos.compareCommits({
         owner: repo.owner,

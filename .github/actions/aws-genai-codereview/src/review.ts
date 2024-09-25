@@ -44,20 +44,18 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     return;
   }
 
-  // const toPrintContextPayloadPullRequest = context.payload.pull_request.map((item: unknown) => {
-  //   const { base, body } = item as { base?: unknown; body?: unknown }; // 仅提取 name 和 age 属性
-  //   return { base, body }; // 返回包含指定属性的对象
-  // });
-  // printWithColor("context.payload.pull_request", toPrintContextPayloadPullRequest);
-
   // printWithColor(
   //   "context.payload.pull_request",
   //   context.payload.pull_request.map(({ base, body }: { base: unknown; body: unknown }) => ({ base, body }))
   // );
-  printWithColor("context.payload.pull_request", {
-    base: context.payload.pull_request.base,
-    body: context.payload.pull_request.body,
-  });
+  printWithColor(
+    "context.payload.pull_request",
+    {
+      base: context.payload.pull_request.base,
+      body: context.payload.pull_request.body,
+    },
+    2
+  );
 
   const inputs: Inputs = new Inputs();
   inputs.title = context.payload.pull_request.title;
@@ -113,7 +111,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     base: highestReviewedCommitId,
     head: context.payload.pull_request.head.sha,
   });
-  printWithColor("incrementalDiff.data.files", incrementalDiff.data.files);
+  printWithColor("incrementalDiff.data.files", incrementalDiff.data.files?.slice(0, 3));
 
   // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
   const targetBranchDiff = await octokit.repos.compareCommits({
@@ -122,7 +120,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     base: context.payload.pull_request.base.sha,
     head: context.payload.pull_request.head.sha,
   });
-  // printWithColor("targetBranchDiff.data.files", targetBranchDiff.data.files);
+  // printWithColor("targetBranchDiff.data.files", targetBranchDiff.data.files?.slice(0, 3));
 
   // 定义 GitHub 文件差异的类型
   type FileDiff = components["schemas"]["diff-entry"];

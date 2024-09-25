@@ -584,7 +584,7 @@ ${chain}
       // 将获取到的评论缓存到 this.issueCommentsCache 中，下次请求时可以直接使用缓存。
       this.issueCommentsCache[target] = allComments;
       if (allComments[0]) {
-        printWithColor("allComments[0]", allComments[0]);
+        printWithColor("allComments[0]", allComments[0], 1);
       } // for debug purpose
       return allComments;
     } catch (e: any) {
