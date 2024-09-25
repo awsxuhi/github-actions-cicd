@@ -48,15 +48,54 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   //   "context.payload.pull_request",
   //   context.payload.pull_request.map(({ base, body }: { base: unknown; body: unknown }) => ({ base, body }))
   // );
-  printWithColor("context.payload.pull_request", context.payload.pull_request);
-  // printWithColor(
-  //   "context.payload.pull_request",
-  //   {
-  //     base: context.payload.pull_request.base,
-  //     body: context.payload.pull_request.body,
-  //   },
-  //   1
-  // );
+  // printWithColor("context.payload.pull_request", context.payload.pull_request);
+  printWithColor("context.payload.pull_request", {
+    _links: context.payload.pull_request._links,
+    base: {
+      label: context.payload.pull_request.base.label,
+      ref: context.payload.pull_request.base.ref,
+      sha: context.payload.pull_request.base.sha,
+    },
+    head: {
+      label: context.payload.pull_request.head.label,
+      ref: context.payload.pull_request.head.ref,
+      sha: context.payload.pull_request.head.sha,
+    },
+    repo: {
+      owner: {
+        login: context.payload.pull_request.base.repo.owner.login,
+        type: context.payload.pull_request.base.repo.owner.type,
+      },
+      name: context.payload.pull_request.base.repo.name,
+    },
+    title: context.payload.pull_request.title,
+    number: context.payload.pull_request.number,
+    diff_url: context.payload.pull_request.diff_url,
+    patch_url: context.payload.pull_request.patch_url,
+    review_comments: context.payload.pull_request.review_comments,
+    review_comments_url: context.payload.pull_request.review_comments_url,
+    comments: context.payload.pull_request.comments,
+    comments_url: context.payload.pull_request.comments_url,
+    commits: context.payload.pull_request.commits,
+    commits_url: context.payload.pull_request.commits_url,
+    body: context.payload.pull_request.body,
+  });
+
+  // xuhi: added this to get the diff of the PR
+  const { data: getDiffString } = await octokit.pulls.get({
+    owner: context.payload.pull_request.repo.owner.login,
+    repo: context.payload.pull_request.repo.name,
+    pull_number: context.payload.pull_request.number,
+    mediaType: { format: "diff" },
+  });
+  printWithColor("getDiff", getDiffString);
+
+  const { data: getDiffJson } = await octokit.pulls.get({
+    owner: context.payload.pull_request.repo.owner.login,
+    repo: context.payload.pull_request.repo.name,
+    pull_number: context.payload.pull_request.number,
+  });
+  printWithColor("getDiff", getDiffJson);
 
   const inputs: Inputs = new Inputs();
   inputs.title = context.payload.pull_request.title;
