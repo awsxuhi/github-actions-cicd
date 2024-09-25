@@ -23,6 +23,6 @@ export function printWithColor(variableName: string, variableValue: unknown, dep
   // 使用 console.dir 打印出对象的完整结构，比console.log好的地方是打印出来的对象的属性值含有颜色
   // depth: null：确保显示对象的所有嵌套层级，打印出完整的结构。
   // colors: true：让终端输出的结果带有颜色，方便阅读。
-  console.log(`\n\n\x1b[36m%s\x1b[0m`, `Printing ${variableName}... (${file}:${line})`);
+  console.log(`\n\n\x1b[36m%s\x1b[0m`, `Printing ${variableName} <${file}:${line}>`);
   console.dir(variableValue, { depth, colors });
 }

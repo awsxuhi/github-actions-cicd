@@ -94009,7 +94009,19 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         (0,core.warning)("Skipped: context.payload.pull_request is null");
         return;
     }
-    (0,utils/* printWithColor */.N)("context.payload.pull_request", context.payload.pull_request, 1);
+    // const toPrintContextPayloadPullRequest = context.payload.pull_request.map((item: unknown) => {
+    //   const { base, body } = item as { base?: unknown; body?: unknown }; // 仅提取 name 和 age 属性
+    //   return { base, body }; // 返回包含指定属性的对象
+    // });
+    // printWithColor("context.payload.pull_request", toPrintContextPayloadPullRequest);
+    // printWithColor(
+    //   "context.payload.pull_request",
+    //   context.payload.pull_request.map(({ base, body }: { base: unknown; body: unknown }) => ({ base, body }))
+    // );
+    (0,utils/* printWithColor */.N)("context.payload.pull_request", {
+        base: context.payload.pull_request.base,
+        body: context.payload.pull_request.body,
+    });
     const inputs = new src_inputs/* Inputs */.k();
     inputs.title = context.payload.pull_request.title;
     if (context.payload.pull_request.body != null) {
@@ -94258,6 +94270,9 @@ ${filterIgnoredFiles.length > 0
     const summaryPromises = [];
     const skippedFiles = [];
     for (const [filename, fileContent, fileDiff] of filesAndChanges) {
+        (0,utils/* printWithColor */.N)("filename", filename);
+        (0,utils/* printWithColor */.N)("fileContent", fileContent);
+        (0,utils/* printWithColor */.N)("fileDiff", fileDiff);
         if (options.maxFiles <= 0 || summaryPromises.length < options.maxFiles) {
             summaryPromises.push(bedrockConcurrencyLimit(async () => await doSummary(filename, fileContent, fileDiff)));
         }
@@ -94707,7 +94722,7 @@ function printWithColor(variableName, variableValue, depth = null, colors = true
     // 使用 console.dir 打印出对象的完整结构，比console.log好的地方是打印出来的对象的属性值含有颜色
     // depth: null：确保显示对象的所有嵌套层级，打印出完整的结构。
     // colors: true：让终端输出的结果带有颜色，方便阅读。
-    console.log(`\n\n\x1b[36m%s\x1b[0m`, `Printing ${variableName}... (${file}:${line})`);
+    console.log(`\n\n\x1b[36m%s\x1b[0m`, `Printing ${variableName} <${file}:${line}>`);
     console.dir(variableValue, { depth, colors });
 }
 

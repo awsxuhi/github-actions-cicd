@@ -44,7 +44,20 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     return;
   }
 
-  printWithColor("context.payload.pull_request", context.payload.pull_request, 1);
+  // const toPrintContextPayloadPullRequest = context.payload.pull_request.map((item: unknown) => {
+  //   const { base, body } = item as { base?: unknown; body?: unknown }; // 仅提取 name 和 age 属性
+  //   return { base, body }; // 返回包含指定属性的对象
+  // });
+  // printWithColor("context.payload.pull_request", toPrintContextPayloadPullRequest);
+
+  // printWithColor(
+  //   "context.payload.pull_request",
+  //   context.payload.pull_request.map(({ base, body }: { base: unknown; body: unknown }) => ({ base, body }))
+  // );
+  printWithColor("context.payload.pull_request", {
+    base: context.payload.pull_request.base,
+    body: context.payload.pull_request.body,
+  });
 
   const inputs: Inputs = new Inputs();
   inputs.title = context.payload.pull_request.title;
@@ -337,6 +350,9 @@ ${
   const summaryPromises = [];
   const skippedFiles = [];
   for (const [filename, fileContent, fileDiff] of filesAndChanges) {
+    printWithColor("filename", filename);
+    printWithColor("fileContent", fileContent);
+    printWithColor("fileDiff", fileDiff);
     if (options.maxFiles <= 0 || summaryPromises.length < options.maxFiles) {
       summaryPromises.push(bedrockConcurrencyLimit(async () => await doSummary(filename, fileContent, fileDiff)));
     } else {
