@@ -48,14 +48,15 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   //   "context.payload.pull_request",
   //   context.payload.pull_request.map(({ base, body }: { base: unknown; body: unknown }) => ({ base, body }))
   // );
-  printWithColor(
-    "context.payload.pull_request",
-    {
-      base: context.payload.pull_request.base,
-      body: context.payload.pull_request.body,
-    },
-    2
-  );
+  printWithColor("context.payload.pull_request", context.payload.pull_request);
+  // printWithColor(
+  //   "context.payload.pull_request",
+  //   {
+  //     base: context.payload.pull_request.base,
+  //     body: context.payload.pull_request.body,
+  //   },
+  //   1
+  // );
 
   const inputs: Inputs = new Inputs();
   inputs.title = context.payload.pull_request.title;

@@ -94013,10 +94013,15 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
     //   "context.payload.pull_request",
     //   context.payload.pull_request.map(({ base, body }: { base: unknown; body: unknown }) => ({ base, body }))
     // );
-    (0,utils/* printWithColor */.N)("context.payload.pull_request", {
-        base: context.payload.pull_request.base,
-        body: context.payload.pull_request.body,
-    }, 2);
+    (0,utils/* printWithColor */.N)("context.payload.pull_request", context.payload.pull_request);
+    // printWithColor(
+    //   "context.payload.pull_request",
+    //   {
+    //     base: context.payload.pull_request.base,
+    //     body: context.payload.pull_request.body,
+    //   },
+    //   1
+    // );
     const inputs = new src_inputs/* Inputs */.k();
     inputs.title = context.payload.pull_request.title;
     if (context.payload.pull_request.body != null) {
