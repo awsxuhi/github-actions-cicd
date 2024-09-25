@@ -94009,11 +94009,51 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         (0,core.warning)("Skipped: context.payload.pull_request is null");
         return;
     }
-    // printWithColor(
-    //   "context.payload.pull_request",
-    //   context.payload.pull_request.map(({ base, body }: { base: unknown; body: unknown }) => ({ base, body }))
-    // );
     // printWithColor("context.payload.pull_request", context.payload.pull_request);
+    /*
+  这段代码中的变量都来源于 `context.payload.pull_request`，它们表示一个 Pull Request 的相关信息。每个字段都对应 Pull Request 不同的属性和内容，以下是具体解释：
+  
+  1. **`title`**：
+     表示 Pull Request 的标题，即用户在创建 Pull Request 时输入的简短描述。通常用来概括 Pull Request 的主要变更或目的。
+  
+  2. **`number`**：
+     表示 Pull Request 的编号。这是一个 GitHub 仓库中唯一的数字，用来标识这个 Pull Request。在该仓库中每个新的 Pull Request 会自动分配一个递增的编号。
+  
+  3. **`diff_url`**：
+     表示一个 URL，链接到 Pull Request 的 `diff` 文件。这个文件展示了 Pull Request 中的代码差异，采用 `diff` 格式显示修改内容。
+  
+  4. **`patch_url`**：
+     表示一个 URL，链接到 Pull Request 的 `patch` 文件。这个文件包含的是 Pull Request 的补丁信息，可以直接应用到代码仓库中，用来将 Pull Request 中的修改合并到本地仓库。
+  
+  5. **`review_comments`**：
+     表示 Pull Request 中代码审查评论的数量。代码审查评论是针对具体的代码行或代码块进行的评论，通常是由代码审查者提出的。
+  
+  6. **`review_comments_url`**：
+     表示一个 URL，链接到 Pull Request 的代码审查评论的 API 端点。通过这个 URL 可以获取或操作与代码审查相关的评论。
+  
+  7. **`comments`**：
+     表示 Pull Request 的常规评论数量。这些评论通常与代码无关，而是对 Pull Request 进行的整体讨论或反馈。
+  
+  8. **`comments_url`**：
+     表示一个 URL，链接到 Pull Request 的评论 API 端点。通过这个 URL 可以获取或操作 Pull Request 的常规评论。
+  
+  9. **`commits`**：
+     表示 Pull Request 中包含的提交（commit）数量。一个 Pull Request 可以包含多个代码提交。
+  
+  10. **`commits_url`**：
+      表示一个 URL，链接到 Pull Request 的提交 API 端点。通过这个 URL 可以获取该 Pull Request 中的所有提交信息。
+  
+  11. **`body`**：
+      表示 Pull Request 的正文内容，通常是用户在创建 Pull Request 时写的描述性文字。这个字段确实是特指 Pull Request 创建时的第一条帖子内容，通常包含更详细的解释或上下文，说明 Pull Request 的目的、改动的细节、需要注意的问题等。
+  
+  ---
+  
+  **`comments` 和 `review_comments` 的区别：**
+  - **`comments`** 是指 Pull Request 整体下的讨论，用户可以在 Pull Request 中发表评论，这些评论是和具体的代码无关的讨论。
+  - **`review_comments`** 则是代码审查者在审查代码时对特定代码行或文件作出的评论。它是基于代码的反馈和讨论，而不是整个 Pull Request。
+  
+  总结来说，`comments` 更加广泛地适用于整个 Pull Request，而 `review_comments` 是精确到代码行的讨论。q
+    */
     (0,utils/* printWithColor */.N)("context.payload.pull_request", {
         _links: context.payload.pull_request._links,
         base: {
@@ -94046,6 +94086,7 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         body: context.payload.pull_request.body,
     });
     // xuhi: added this to get the diff of the PR
+    // getDiffString的值是一个字符串，就是diff_url链接的网页显示的内容
     const { data: getDiffString } = await octokit/* octokit.pulls.get */.K.pulls.get({
         owner: context.payload.pull_request.base.repo.owner.login,
         repo: context.payload.pull_request.base.repo.name,
@@ -94053,12 +94094,6 @@ const codeReview = async (lightBot, heavyBot, options, prompts) => {
         mediaType: { format: "diff" },
     });
     (0,utils/* printWithColor */.N)("getDiff", getDiffString);
-    const { data: getDiffJson } = await octokit/* octokit.pulls.get */.K.pulls.get({
-        owner: context.payload.pull_request.base.repo.owner.login,
-        repo: context.payload.pull_request.base.repo.name,
-        pull_number: context.payload.pull_request.number,
-    });
-    (0,utils/* printWithColor */.N)("getDiff", getDiffJson);
     const inputs = new src_inputs/* Inputs */.k();
     inputs.title = context.payload.pull_request.title;
     if (context.payload.pull_request.body != null) {
