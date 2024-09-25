@@ -118,6 +118,8 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     comments_url: context.payload.pull_request.comments_url,
     commits: context.payload.pull_request.commits,
     commits_url: context.payload.pull_request.commits_url,
+    before: context.payload.pull_request.before,
+    after: context.payload.pull_request.after,
     body: context.payload.pull_request.body,
   });
 
