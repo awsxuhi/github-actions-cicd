@@ -202,30 +202,30 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
     const response = await bedrockClient.send(command);
 
     let responseData: string;
+    responseData = new TextDecoder("utf-8").decode(response.body);
 
-    if (response.body) {
-      // 确保 response.body 存在
-      // 检查response.body的类型
-      if (response.body instanceof Uint8Array || Buffer.isBuffer(response.body)) {
-        // 如果是Uint8Array或Buffer，直接解码
-        responseData = new TextDecoder("utf-8").decode(response.body);
-        core.info("========> Response body is a Uint8Array or Buffer");
-      } else if (typeof response.body === "string") {
-        // 如果已经是字符串，直接使用
-        responseData = response.body;
-      } else if (response.body && typeof (response.body as ReadableStream).getReader === "function") {
-        // 如果是ReadableStream，转换为字符串
-        responseData = await streamToString(response.body as ReadableStream);
-      } else {
-        throw new Error("Unsupported response body type");
-      }
-    } else {
-      throw new Error("Response body is undefined");
-    }
+    // if (response.body) {
+    //   // 确保 response.body 存在
+    //   // 检查response.body的类型
+    //   if (response.body instanceof Uint8Array || Buffer.isBuffer(response.body)) {
+    //     // 如果是Uint8Array或Buffer，直接解码
+    //     responseData = new TextDecoder("utf-8").decode(response.body);
+    //     core.info("========> Response body is a Uint8Array or Buffer");
+    //   } else if (typeof response.body === "string") {
+    //     // 如果已经是字符串，直接使用
+    //     responseData = response.body;
+    //   } else if (response.body && typeof (response.body as ReadableStream).getReader === "function") {
+    //     // 如果是ReadableStream，转换为字符串
+    //     responseData = await streamToString(response.body as ReadableStream);
+    //   } else {
+    //     throw new Error("Unsupported response body type");
+    //   }
+    // } else {
+    //   throw new Error("Response body is undefined");
+    // }
 
     const responseBody = JSON.parse(responseData);
-    const completionText = responseBody.completion.trim();
-    const res = completionText || "{}";
+    const res = responseBody.content[0].text.trim() || "{}";
 
     // 移除Markdown代码块并确保有效的JSON
     const jsonString = res.replace(/^```json\s*|\s*```$/g, "").trim();
@@ -323,7 +323,7 @@ async function hasExistingReview(owner: string, repo: string, pull_number: numbe
     repo,
     pull_number,
   });
-  printWithColor("reviews", reviews);
+  // printWithColor("reviews", reviews);
   return reviews.data.length > 0;
 }
 
