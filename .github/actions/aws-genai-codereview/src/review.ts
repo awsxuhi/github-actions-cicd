@@ -89,49 +89,71 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
 
 总结来说，`comments` 更加广泛地适用于整个 Pull Request，而 `review_comments` 是精确到代码行的讨论。q
   */
-  printWithColor("context.payload.pull_request", {
-    _links: context.payload.pull_request._links,
-    base: {
-      label: context.payload.pull_request.base.label,
-      ref: context.payload.pull_request.base.ref,
-      sha: context.payload.pull_request.base.sha,
-    },
-    head: {
-      label: context.payload.pull_request.head.label,
-      ref: context.payload.pull_request.head.ref,
-      sha: context.payload.pull_request.head.sha,
-    },
-    repo: {
+  printWithColor("context.payload", {
+    action: context.payload.action,
+    before: context.payload.before,
+    after: context.payload.after,
+    number: context.payload.number,
+    repository: {
+      name: context.payload.repository?.name,
       owner: {
-        login: context.payload.pull_request.base.repo.owner.login,
-        type: context.payload.pull_request.base.repo.owner.type,
+        login: context.payload.repository?.owner.login,
+        type: context.payload.repository?.owner.type,
       },
-      name: context.payload.pull_request.base.repo.name,
     },
-    title: context.payload.pull_request.title,
-    number: context.payload.pull_request.number,
-    diff_url: context.payload.pull_request.diff_url,
-    patch_url: context.payload.pull_request.patch_url,
-    review_comments: context.payload.pull_request.review_comments,
-    review_comments_url: context.payload.pull_request.review_comments_url,
-    comments: context.payload.pull_request.comments,
-    comments_url: context.payload.pull_request.comments_url,
-    commits: context.payload.pull_request.commits,
-    commits_url: context.payload.pull_request.commits_url,
-    before: context.payload.pull_request.before,
+    sender: {
+      login: context.payload.sender?.login,
+    },
+    pull_request: {
+      _links: context.payload.pull_request._links,
+      base: {
+        label: context.payload.pull_request.base.label,
+        ref: context.payload.pull_request.base.ref,
+        sha: context.payload.pull_request.base.sha,
+        repo: {
+          owner: {
+            login: context.payload.pull_request.base.repo.owner.login,
+            type: context.payload.pull_request.base.repo.owner.type,
+          },
+          name: context.payload.pull_request.base.repo.name,
+        },
+      },
+      head: {
+        label: context.payload.pull_request.head.label,
+        ref: context.payload.pull_request.head.ref,
+        sha: context.payload.pull_request.head.sha,
+      },
+      title: context.payload.pull_request.title,
+      number: context.payload.pull_request.number,
+      diff_url: context.payload.pull_request.diff_url,
+      patch_url: context.payload.pull_request.patch_url,
+      review_comments: context.payload.pull_request.review_comments,
+      review_comments_url: context.payload.pull_request.review_comments_url,
+      comments: context.payload.pull_request.comments,
+      comments_url: context.payload.pull_request.comments_url,
+      commits: context.payload.pull_request.commits,
+      commits_url: context.payload.pull_request.commits_url,
+      before: context.payload.pull_request.before,
+    },
   });
 
   printWithColor("context.payload", context.payload);
 
   // xuhi: added this to get the diff of the PR
   // getDiffString的值是一个字符串，就是diff_url链接的网页显示的内容
+  // octokit.pulls.get 方法可以用于获取 Pull Request 的差异数据，其返回的 diff 内容与 compareCommits 方法的 diff 数据基本一致。
+  /**
+    如果base是A，执行一个pull request后，head是B，再次执行一次pull request后，head变成C，那么此时通过octokit.pulls.get得到的diff是A和C的差异，不是B和C的差异
+  */
   const { data: getDiffString } = await octokit.pulls.get({
     owner: context.payload.pull_request.base.repo.owner.login,
     repo: context.payload.pull_request.base.repo.name,
     pull_number: context.payload.pull_request.number,
     mediaType: { format: "diff" },
   });
-  printWithColor("getDiff", getDiffString);
+  printWithColor("getDiff: Base(A) vs. Head(C)", getDiffString);
+
+  /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
   const inputs: Inputs = new Inputs();
   inputs.title = context.payload.pull_request.title;
@@ -179,6 +201,35 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   1. incrementalDiff：从 highestReviewedCommitId（上次审查的最后一次提交）到 PR 最新提交（context.payload.pull_request.head.sha）的增量差异。
   2. targetBranchDiff：从目标分支的基准提交（context.payload.pull_request.base.sha）到 PR 最新提交的完整差异。
    ***********************************************************************************************/
+
+  /**
+   * xuhi: Let me use another way to get the previousCommit
+   */
+
+  const allCommits = await octokit.pulls.listCommits({
+    owner: context.payload.pull_request.base.repo.owner.login,
+    repo: context.payload.pull_request.base.repo.name,
+    pull_number: context.payload.pull_request.number,
+  });
+  const previousHeadSha = allCommits.data[allCommits.data.length - 2].sha;
+  const newHeadSha = allCommits.data[allCommits.data.length - 1].sha;
+
+  const responseFromCompareCommits = await octokit.repos.compareCommits({
+    owner: context.payload.pull_request.base.repo.owner.login,
+    repo: context.payload.pull_request.base.repo.name,
+    base: previousHeadSha, // `B` 的 SHA
+    head: newHeadSha, // `C` 的 SHA
+    headers: {
+      accept: "application/vnd.github.v3.diff",
+    },
+  });
+  const incrementalDiff_xuhi = String(responseFromCompareCommits.data);
+  printWithColor("responseFromCompareCommits.data.files", responseFromCompareCommits.data.files?.slice(0, 3));
+  printWithColor("incrementalDiff_xuhi", incrementalDiff_xuhi);
+  printWithColor("previousHeadSha", previousHeadSha);
+  printWithColor("newHeadSha", newHeadSha);
+  printWithColor("highestReviewedCommitId", highestReviewedCommitId);
+  printWithColor("context.payload.pull_request.head.sha", context.payload.pull_request.head.sha);
 
   // Fetch the diff between the highest reviewed commit and the latest commit of the PR branch
   const incrementalDiff = await octokit.repos.compareCommits({
