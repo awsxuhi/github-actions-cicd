@@ -110,7 +110,7 @@ async function analyzeCode(changedFiles: File[], prDetails: PRDetails): Promise<
 
 function createPrompt(changedFiles: File[], prDetails: PRDetails): string {
   core.info("Creating prompt for AI...");
-  const problemOutline = `Your task is to review pull requests (PR). Instructions:
+  const problemOutline = `Human: Your task is to review pull requests (PR). Instructions:
 - Provide the response in following JSON format:  {"comments": [{"file": <file name>,  "lineNumber":  <line_number>, "reviewComment": "<review comment>"}]}
 - DO NOT give positive comments or compliments.
 - DO NOT give advice on renaming variable names or writing more descriptive variables.
@@ -156,7 +156,8 @@ function createPromptForDiffChunk(file: File, chunk: Chunk): string {
     .map((c) => `${c.ln ? c.ln : c.ln2} ${c.content}`)
     .join("\n")}
   \`\`\`
-  `;
+  
+  Assistant:`;
 }
 
 async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> {
@@ -313,7 +314,7 @@ async function run() {
     let diff: string | null;
     const eventData = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH ?? "", "utf8"));
     printWithColor("prDetails", prDetails);
-    printWithColor("eventData", eventData);
+    printWithColor("eventData", eventData); // the same with context.payload
 
     if (context.eventName !== "pull_request" && context.eventName !== "pull_request_target") {
       core.warning(`Skipped: current event is ${context.eventName}, only support pull_request event`);
