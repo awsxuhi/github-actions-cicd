@@ -206,8 +206,20 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
     printWithColor("responseBody", responseBody);
     const res = responseBody.content[0].text.trim() || "{}";
 
-    // 移除Markdown代码块并确保有效的JSON
-    const jsonString = res.replace(/^```json\s*|\s*```$/g, "").trim();
+    // 移除前缀文本，仅保留 JSON 代码块
+    const jsonStartIndex = res.indexOf("```json");
+    const jsonEndIndex = res.lastIndexOf("```");
+
+    if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {
+      // 提取 JSON 内容部分
+      res = res.substring(jsonStartIndex + 7, jsonEndIndex).trim();
+    } else {
+      core.error("JSON block not found in the response.");
+      throw new Error("Invalid response format: JSON block not found");
+    }
+
+    // // 移除Markdown代码块并确保有效的JSON
+    // const jsonString = res.replace(/^```json\s*|\s*```$/g, "").trim();
 
     try {
       let data = JSON.parse(jsonString);
