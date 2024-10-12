@@ -204,7 +204,7 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
     const responseData = new TextDecoder("utf-8").decode(response.body);
     const responseBody = JSON.parse(responseData);
     printWithColor("responseBody", responseBody);
-    const res = responseBody.content[0].text.trim() || "{}";
+    let res = responseBody.content[0].text.trim() || "{}";
 
     // 移除前缀文本，仅保留 JSON 代码块
     const jsonStartIndex = res.indexOf("```json");
@@ -222,13 +222,13 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
     // const jsonString = res.replace(/^```json\s*|\s*```$/g, "").trim();
 
     try {
-      let data = JSON.parse(jsonString);
+      let data = JSON.parse(res);
       if (!Array.isArray(data?.comments)) {
         throw new Error("Invalid response from OpenAI API");
       }
       return data.comments;
     } catch (parseError) {
-      core.error(`Failed to parse JSON: ${jsonString}`);
+      core.error(`Failed to parse JSON: ${res}`);
       core.error(`Parse error: ${parseError}`);
       throw parseError;
     }
