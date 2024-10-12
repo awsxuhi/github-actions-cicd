@@ -201,30 +201,9 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
 
     const response = await bedrockClient.send(command);
 
-    let responseData: string;
-    responseData = new TextDecoder("utf-8").decode(response.body);
-
-    // if (response.body) {
-    //   // 确保 response.body 存在
-    //   // 检查response.body的类型
-    //   if (response.body instanceof Uint8Array || Buffer.isBuffer(response.body)) {
-    //     // 如果是Uint8Array或Buffer，直接解码
-    //     responseData = new TextDecoder("utf-8").decode(response.body);
-    //     core.info("========> Response body is a Uint8Array or Buffer");
-    //   } else if (typeof response.body === "string") {
-    //     // 如果已经是字符串，直接使用
-    //     responseData = response.body;
-    //   } else if (response.body && typeof (response.body as ReadableStream).getReader === "function") {
-    //     // 如果是ReadableStream，转换为字符串
-    //     responseData = await streamToString(response.body as ReadableStream);
-    //   } else {
-    //     throw new Error("Unsupported response body type");
-    //   }
-    // } else {
-    //   throw new Error("Response body is undefined");
-    // }
-
+    const responseData = new TextDecoder("utf-8").decode(response.body);
     const responseBody = JSON.parse(responseData);
+    printWithColor("responseBody", responseBody);
     const res = responseBody.content[0].text.trim() || "{}";
 
     // 移除Markdown代码块并确保有效的JSON
@@ -257,34 +236,6 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
     core.setFailed(`Bedrock API request failed: ${error.message}`);
     throw error;
   }
-}
-
-async function streamToString(stream: ReadableStream): Promise<string> {
-  const reader = stream.getReader();
-  let result = "";
-  let done = false;
-  let value: Uint8Array;
-
-  while (!done) {
-    const readResult = await reader.read();
-    done = readResult.done;
-    value = readResult.value;
-    if (value) {
-      result += new TextDecoder("utf-8").decode(value);
-    }
-  }
-
-  return result;
-}
-
-// 如果在Node.js环境中，处理Node.js的Readable流
-async function nodeStreamToString(stream: NodeJS.ReadableStream): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: any[] = [];
-    stream.on("data", (chunk) => chunks.push(chunk));
-    stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-    stream.on("error", reject);
-  });
 }
 
 function createComments(changedFiles: File[], aiResponses: Array<AICommentResponse>): Array<GithubComment> {
