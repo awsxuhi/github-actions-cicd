@@ -161,22 +161,44 @@ function createPromptForDiffChunk(file: File, chunk: Chunk): string {
 }
 
 async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> {
-  core.info("Sending request to OpenAI API...");
+  core.info("Sending request to Bedrock/Claude API...");
 
   try {
-    const params = {
-      modelId: BEDROCK_MODEL_ID,
-      body: JSON.stringify({
-        prompt: prompt,
-        max_tokens_to_sample: RESPONSE_TOKENS,
-        temperature: 0.2,
-        stop_sequences: ["\n\nHuman:"],
-      }),
-      contentType: "application/json",
-      accept: "application/json",
+    // const params = {
+    //   modelId: BEDROCK_MODEL_ID,
+    //   body: JSON.stringify({
+    //     prompt: prompt,
+    //     max_tokens_to_sample: RESPONSE_TOKENS,
+    //     temperature: 0.2,
+    //     stop_sequences: ["\n\nHuman:"],
+    //   }),
+    //   contentType: "application/json",
+    //   accept: "application/json",
+    // };
+
+    const payload = {
+      anthropic_version: "bedrock-2023-05-31", // Claude 版本
+      max_tokens: RESPONSE_TOKENS, // 使用 max_tokens 而不是 max_tokens_to_sample
+      temperature: 0.2, // temperature 放在顶层
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: prompt, // prompt 作为 messages 的 text 内容
+            },
+          ],
+        },
+      ],
     };
 
-    const command = new InvokeModelCommand(params);
+    const command = new InvokeModelCommand({
+      modelId: BEDROCK_MODEL_ID, // 使用您定义的 Claude 模型 ID
+      contentType: "application/json",
+      body: JSON.stringify(payload),
+    });
+
     const response = await bedrockClient.send(command);
 
     let responseData: string;
