@@ -246,7 +246,6 @@ function createComment(
 
 async function createReviewComment(
   owner: string,
-  owner: string,
   repo: string,
   pull_number: number,
   comments: Array<{ body: string; path: string; line: number }>
