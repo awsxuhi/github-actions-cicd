@@ -224,12 +224,13 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     },
   });
   const incrementalDiff_xuhi = String(responseFromCompareCommits.data);
-  printWithColor("responseFromCompareCommits.data.files", responseFromCompareCommits.data.files?.slice(0, 3));
-  printWithColor("incrementalDiff_xuhi", incrementalDiff_xuhi);
+  printWithColor("responseFromCompareCommits.data", responseFromCompareCommits.data); //undefined
+  printWithColor("incrementalDiff_xuhi", incrementalDiff_xuhi); // yes, a good file diff string
   printWithColor("previousHeadSha", previousHeadSha);
   printWithColor("newHeadSha", newHeadSha);
   printWithColor("highestReviewedCommitId", highestReviewedCommitId);
   printWithColor("context.payload.pull_request.head.sha", context.payload.pull_request.head.sha);
+  // previousHeadSha==highestReviewedCommitId, newHeadSha==context.payload.pull_request.head.sha
 
   // Fetch the diff between the highest reviewed commit and the latest commit of the PR branch
   const incrementalDiff = await octokit.repos.compareCommits({
