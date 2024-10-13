@@ -5,7 +5,7 @@ import parseDiff, { Chunk, File } from "parse-diff";
 import { minimatch } from "minimatch";
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { context } from "@actions/github";
-import { printWithColor, sanitizeJsonString } from "./utils";
+import { printContextPayloadKeyItems, printWithColor, sanitizeJsonString } from "./utils";
 
 const GITHUB_TOKEN: string = core.getInput("GITHUB_TOKEN");
 const REVIEW_MAX_COMMENTS: string = core.getInput("REVIEW_MAX_COMMENTS");
@@ -287,79 +287,33 @@ async function hasExistingReview(owner: string, repo: string, pull_number: numbe
 async function run() {
   try {
     printWithColor("Starting AI code review process...");
-
     const prDetails = await getPRDetails();
-    let diff: string | null;
-    const eventData = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH ?? "", "utf8"));
     printWithColor("prDetails", prDetails);
-    printWithColor("eventData", eventData); // the same with context.payload
+
+    let diff: string | null;
 
     if (context.eventName !== "pull_request" && context.eventName !== "pull_request_target") {
       core.warning(`Skipped: current event is ${context.eventName}, only support pull_request event`);
       return;
     }
 
-    // 虽然 pull_request 和 pull_request_target 是不同的事件类型，但它们的结构相同，GitHub 会在 context.payload.pull_request 中存储拉取请求的数据。因此，context.payload.pull_request 适用于两种事件类型。
+    /* 
+    Although `pull_request` and `pull_request_target` are different event types, they both generate the same structure for `context.payload.pull_request`. GitHub stores the pull request data in `context.payload.pull_request`, making it applicable to both event types. Therefore, when the program reaches this point, `context.payload.pull_request` will have a value.
+    */
+    printContextPayloadKeyItems(); // Print info for debuging
     if (context.payload.pull_request == null) {
       core.warning("Skipped: context.payload.pull_request is null");
       return;
     }
-    printWithColor("context.payload", {
-      action: context.payload.action,
-      before: context.payload.before,
-      after: context.payload.after,
-      number: context.payload.number,
-      repository: {
-        name: context.payload.repository?.name,
-        owner: {
-          login: context.payload.repository?.owner.login,
-          type: context.payload.repository?.owner.type,
-        },
-      },
-      sender: {
-        login: context.payload.sender?.login,
-      },
-      pull_request: {
-        _links: context.payload.pull_request._links,
-        base: {
-          label: context.payload.pull_request.base.label,
-          ref: context.payload.pull_request.base.ref,
-          sha: context.payload.pull_request.base.sha,
-          repo: {
-            owner: {
-              login: context.payload.pull_request.base.repo.owner.login,
-              type: context.payload.pull_request.base.repo.owner.type,
-            },
-            name: context.payload.pull_request.base.repo.name,
-          },
-        },
-        head: {
-          label: context.payload.pull_request.head.label,
-          ref: context.payload.pull_request.head.ref,
-          sha: context.payload.pull_request.head.sha,
-        },
-        title: context.payload.pull_request.title,
-        number: context.payload.pull_request.number,
-        diff_url: context.payload.pull_request.diff_url,
-        patch_url: context.payload.pull_request.patch_url,
-        review_comments: context.payload.pull_request.review_comments,
-        review_comments_url: context.payload.pull_request.review_comments_url,
-        comments: context.payload.pull_request.comments,
-        comments_url: context.payload.pull_request.comments_url,
-        commits: context.payload.pull_request.commits,
-        commits_url: context.payload.pull_request.commits_url,
-        before: context.payload.pull_request.before,
-      },
-    });
 
-    printWithColor(`Processing ${eventData.action} event...`);
+    printWithColor(`Processing ${context.payload.action} event...`);
     const existingReview = await hasExistingReview(prDetails.owner, prDetails.repo, prDetails.pull_number);
 
-    if (eventData.action === "opened" || (eventData.action === "synchronize" && !existingReview)) {
+    if (context.payload.action === "opened" || (context.payload.action === "synchronize" && !existingReview)) {
       diff = await getDiff(prDetails.owner, prDetails.repo, prDetails.pull_number);
-    } else if (eventData.action === "synchronize" && existingReview) {
-      const newBaseSha = eventData.before;
-      const newHeadSha = eventData.after;
+    } else if (context.payload.action === "synchronize" && existingReview) {
+      const newBaseSha = context.payload.before;
+      const newHeadSha = context.payload.after;
 
       core.info(`Comparing commits: ${newBaseSha} -> ${newHeadSha}`);
       const response = await octokit.repos.compareCommits({
