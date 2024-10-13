@@ -200,31 +200,31 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
     });
 
     const response = await bedrockClient.send(command);
-
     const responseData = new TextDecoder("utf-8").decode(response.body);
     const responseBody = JSON.parse(responseData);
     printWithColor("responseBody", responseBody);
+
     let res = responseBody.content[0].text.trim() || "{}";
 
-    // 移除前缀文本，仅保留 JSON 代码块
+    // 直接尝试提取 JSON，如果有 Markdown 包裹则处理，没有则直接解析
     const jsonStartIndex = res.indexOf("```json");
     const jsonEndIndex = res.lastIndexOf("```");
 
     if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {
-      // 提取 JSON 内容部分
+      // 如果有 Markdown 包裹，提取 JSON 内容部分
       res = res.substring(jsonStartIndex + 7, jsonEndIndex).trim();
     } else {
-      core.error("JSON block not found in the response.");
-      throw new Error("Invalid response format: JSON block not found");
+      core.info("No JSON block markers found. Proceeding with entire text as JSON.");
+      // throw new Error("Invalid response format: JSON block not found");
     }
-    printWithColor("res (extracted the Json part)", res);
+    printWithColor("res (extracted JSON part or entire text)", res);
     // // 移除Markdown代码块并确保有效的JSON
     // const jsonString = res.replace(/^```json\s*|\s*```$/g, "").trim();
 
     try {
       let data = JSON.parse(res);
       if (!Array.isArray(data?.comments)) {
-        throw new Error("Invalid response from OpenAI API");
+        throw new Error("Invalid response from Bedrock API: 'comments' not found");
       }
       return data.comments;
     } catch (parseError) {
