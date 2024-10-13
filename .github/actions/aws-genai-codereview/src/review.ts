@@ -49,7 +49,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     owner: repo.owner,
     repo: repo.repo,
     // eslint-disable-next-line camelcase
-    pull_number: 11,
+    pull_number: 10,
   });
   let body = "";
   if (pr.data.body) {
