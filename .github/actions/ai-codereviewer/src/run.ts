@@ -5,7 +5,8 @@ import parseDiff, { Chunk, File } from "parse-diff";
 import { minimatch } from "minimatch";
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { context } from "@actions/github";
-import { printContextPayloadKeyItems, printWithColor, sanitizeJsonString } from "./utils";
+import { printContextPayloadKeyItems, printWithColor, sanitizeJsonString } from "@/utils";
+import { getFullDiff, getIncrementalDiff } from "@/diff";
 
 const GITHUB_TOKEN: string = core.getInput("GITHUB_TOKEN");
 const REVIEW_MAX_COMMENTS: string = core.getInput("REVIEW_MAX_COMMENTS");
@@ -43,48 +44,6 @@ interface GithubComment {
 }
 
 // ********************************** 2. Function **********************************
-
-async function getPRDetails(): Promise<PRDetails> {
-  core.info("Fetching PR details...");
-
-  const { repository, number } = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH || "", "utf8"));
-
-  const prResponse = await octokit.pulls.get({
-    owner: repository.owner.login,
-    repo: repository.name,
-    pull_number: number,
-  });
-
-  core.info(`PR details fetched for PR #${number}`);
-
-  return {
-    owner: repository.owner.login,
-    repo: repository.name,
-    pull_number: number,
-    title: prResponse.data.title ?? "",
-    description: prResponse.data.body ?? "",
-  };
-}
-
-/*
-    repository.owner.login 在这段代码中指的是 Pull Request 事件的 base 仓库的所有者。这是因为 GitHub 事件 JSON 文件中的 repository 字段通常表示 Pull Request 目标分支所在的仓库（即 base 仓库），而不是 Pull Request 的源分支（即 head 仓库）。
-
-    因此，repository.owner.login 实际上等于 context.payload.pull_request.base.repo.owner.login，它指向目标仓库的所有者信息（也就是 base 仓库的所有者）。
-   */
-
-async function getDiff(owner: string, repo: string, pull_number: number): Promise<string | null> {
-  core.info(`Fetching diff for PR #${pull_number}...`);
-
-  const response = await octokit.pulls.get({
-    owner,
-    repo,
-    pull_number,
-    mediaType: { format: "diff" },
-  });
-  printWithColor("getDiff: Base(A) vs. Head(C)", response.data);
-  // @ts-expect-error - response.data is a string
-  return response.data;
-}
 
 async function analyzeCode(changedFiles: File[], prDetails: PRDetails): Promise<Array<GithubComment>> {
   printWithColor("Analyzing code...");
@@ -305,7 +264,7 @@ async function run() {
     }
 
     printWithColor(`Processing ${context.payload.action} event...`);
-    printContextPayloadKeyItems(); // Print info for debuging and programming to know the structure of the payload
+    // printContextPayloadKeyItems(); // Print info for debuging and programming to know the structure of the payload
     const prDetails = {
       owner: context.payload.repository.owner.login,
       repo: context.payload.repository.name,
@@ -318,25 +277,12 @@ async function run() {
     const existingReview = await hasExistingReview(prDetails.owner, prDetails.repo, prDetails.pull_number);
 
     if (context.payload.action === "opened" || (context.payload.action === "synchronize" && !existingReview)) {
-      diff = await getDiff(prDetails.owner, prDetails.repo, prDetails.pull_number);
+      diff = await getFullDiff(context.payload.action, prDetails.owner, prDetails.repo, prDetails.pull_number, octokit);
     } else if (context.payload.action === "synchronize" && existingReview) {
       const newBaseSha = context.payload.before;
       const newHeadSha = context.payload.after;
 
-      core.info(`Comparing commits: ${newBaseSha.slice(0, 7)} -> ${newHeadSha.slice(0, 7)}`);
-
-      const response = await octokit.repos.compareCommits({
-        headers: {
-          accept: "application/vnd.github.v3.diff",
-        },
-        owner: prDetails.owner,
-        repo: prDetails.repo,
-        base: newBaseSha,
-        head: newHeadSha,
-      });
-      printWithColor("response.data (diff)", response.data);
-      printWithColor("response.data (diff)", String(response.data));
-      diff = String(response.data);
+      diff = await getIncrementalDiff(prDetails, newBaseSha, newHeadSha, octokit);
     } else {
       core.info(`Unsupported event: ${process.env.GITHUB_EVENT_NAME}`);
       return;
@@ -375,7 +321,6 @@ async function run() {
   }
 }
 
-core.info("Starting AI code review action...");
 run().catch((error) => {
   core.error("Unhandled error in run():", error);
   core.setFailed(`Unhandled error in run(): ${(error as Error).message}`);

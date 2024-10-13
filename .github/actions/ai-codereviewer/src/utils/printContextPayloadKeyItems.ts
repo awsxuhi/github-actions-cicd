@@ -6,8 +6,8 @@ export function printContextPayloadKeyItems(): void {
 
   printWithColor("context.payload", {
     action: payload.action,
-    before: payload.before,
-    after: payload.after,
+    before: payload.before, // this is commit B instead of the base commit A
+    after: payload.after, // this is commit C
     number: payload.number,
     repository: {
       name: payload.repository?.name,
