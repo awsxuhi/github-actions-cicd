@@ -7,10 +7,10 @@ name: Code Review Version 3 - Claude3
 
 on:
   workflow_dispatch:
-  # pull_request:
-  #   types:
-  #     - opened
-  #     - synchronize
+  pull_request:
+    types:
+      - opened
+      - synchronize
 
 permissions:
   issues: write
@@ -28,6 +28,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: dev # checkout dev branch to use the latest action
+        # Number of commits to fetch. 0 indicates all history for all branches and tags.
+        # Default: 1
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -62,6 +67,6 @@ jobs:
         uses: ./.github/actions/ai-codereviewer
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # The GITHUB_TOKEN is there by default so you just need to keep it like it is and not necessarily need to add it as secret as it will throw an error. [More Details](https://docs.github.com/en/actions/security-guides/automatic-token-authentication#about-the-github_token-secret)
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_API_MODEL: "gpt-4" # Optional: defaults to "gpt-4"
-          exclude: "**/*.json, **/*.md" # Optional: exclude patterns separated by commas
+          # OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # OPENAI_API_MODEL: "gpt-4" # Optional: defaults to "gpt-4"
+          exclude: "**/*.json, **/*.md, **/.env" # Optional: exclude patterns separated by commas

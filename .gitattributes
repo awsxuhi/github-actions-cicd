@@ -1,0 +1,2 @@
+# 标记 dist 目录中的所有文件为自动生成文件，这样在pull request中dist目录下的文件不进行diff显示
+**/dist/* linguist-generated
