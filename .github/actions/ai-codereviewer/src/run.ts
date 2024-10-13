@@ -262,7 +262,7 @@ async function run() {
     }
 
     printWithColor(`Processing ${context.payload.action} event...`);
-    // printContextPayloadKeyItems(); // Print info for debuging and programming to know the structure of the payload
+    printContextPayloadKeyItems(); // Print info for debuging and programming to know the structure of the payload
     const prDetails = {
       owner: context.payload.repository.owner.login,
       repo: context.payload.repository.name,
