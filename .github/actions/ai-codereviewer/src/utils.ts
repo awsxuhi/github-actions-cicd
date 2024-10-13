@@ -1,6 +1,11 @@
 import path from "path";
 
-export function printWithColor(variableName: string, variableValue: unknown, depth: number | null = null, colors: boolean = true): void {
+export function printWithColor(variableName: string, variableValue?: unknown, depth: number | null = null, colors: boolean = true): void {
+  // 初始化 step 静态变量（若未定义则从 1 开始）
+  if (!printWithColor.step) {
+    printWithColor.step = 1;
+  }
+
   // 获取调用者的文件名和行号
   const error = new Error();
   const stack = error.stack;
@@ -27,6 +32,31 @@ export function printWithColor(variableName: string, variableValue: unknown, dep
     console.log(`\n\n\x1b[36m%s\x1b[0m`, `Printing ${variableName} <${file}:${line}>`);
     console.dir(variableValue, { depth, colors });
   } else {
-    console.log(`\n\n\x1b[36m%s\x1b[0m`, `${variableName} <${file}:${line}>`);
+    console.log(`\n\n\x1b[94m%s\x1b[0m`, `Step ${printWithColor.step}: ${variableName} <${file}:${line}>`);
   }
+
+  printWithColor.step++;
 }
+
+// 声明 step 属性为静态属性
+printWithColor.step = 1;
+
+/**
+颜色	代码
+黑色	\x1b[30m
+红色	\x1b[31m
+绿色	\x1b[32m
+黄色	\x1b[33m
+蓝色	\x1b[34m
+品红色	\x1b[35m
+青色	\x1b[36m
+白色	\x1b[37m
+灰色	\x1b[90m
+亮红色	\x1b[91m
+亮绿色	\x1b[92m
+亮黄色	\x1b[93m
+亮蓝色	\x1b[94m
+亮品红色	\x1b[95m
+亮青色	\x1b[96m
+亮白色	\x1b[97m
+ */

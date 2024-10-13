@@ -87,7 +87,7 @@ async function getDiff(owner: string, repo: string, pull_number: number): Promis
 }
 
 async function analyzeCode(changedFiles: File[], prDetails: PRDetails): Promise<Array<GithubComment>> {
-  core.info("Analyzing code...");
+  printWithColor("Analyzing code...");
 
   const prompt = createPrompt(changedFiles, prDetails);
   const aiResponse = await getAIResponse(prompt);
@@ -104,12 +104,12 @@ async function analyzeCode(changedFiles: File[], prDetails: PRDetails): Promise<
     }
   }
 
-  core.info(`Analysis complete. Generated ${comments.length} comments.`);
+  printWithColor(`Analysis complete. Generated ${comments.length} comments.`);
   return comments;
 }
 
 function createPrompt(changedFiles: File[], prDetails: PRDetails): string {
-  core.info("Creating prompt for AI...");
+  printWithColor("Creating prompt for AI...");
   const problemOutline = `Human: Your task is to review pull requests (PR). Instructions:
 - Provide the response in following JSON format:  {"comments": [{"file": <file name>,  "lineNumber":  <line_number>, "reviewComment": "<review comment>"}]}
 - DO NOT give positive comments or compliments.
@@ -141,7 +141,7 @@ TAKE A DEEP BREATH AND WORK ON THIS PROBLEM STEP-BY-STEP.
     }
   }
 
-  core.info("Prompt created successfully.");
+  printWithColor("Prompt created successfully.");
   return `${problemOutline}\n ${diffChunksPrompt.join("\n")}`;
 }
 
@@ -161,21 +161,9 @@ function createPromptForDiffChunk(file: File, chunk: Chunk): string {
 }
 
 async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> {
-  core.info("Sending request to Bedrock/Claude API...");
+  printWithColor("Sending request to Bedrock/Claude API...");
 
   try {
-    // const params = {
-    //   modelId: BEDROCK_MODEL_ID,
-    //   body: JSON.stringify({
-    //     prompt: prompt,
-    //     max_tokens_to_sample: RESPONSE_TOKENS,
-    //     temperature: 0.2,
-    //     stop_sequences: ["\n\nHuman:"],
-    //   }),
-    //   contentType: "application/json",
-    //   accept: "application/json",
-    // };
-
     const payload = {
       anthropic_version: "bedrock-2023-05-31", // Claude 版本
       max_tokens: RESPONSE_TOKENS, // 使用 max_tokens 而不是 max_tokens_to_sample
@@ -251,7 +239,7 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
 }
 
 function createComments(changedFiles: File[], aiResponses: Array<AICommentResponse>): Array<GithubComment> {
-  core.info("Creating GitHub comments from AI responses...");
+  printWithColor("Creating GitHub comments from AI responses...");
 
   return aiResponses
     .flatMap((aiResponse) => {
@@ -267,7 +255,7 @@ function createComments(changedFiles: File[], aiResponses: Array<AICommentRespon
 }
 
 async function createReviewComment(owner: string, repo: string, pull_number: number, comments: Array<GithubComment>): Promise<void> {
-  core.info(`Creating review comment for PR #${pull_number}...`);
+  printWithColor(`Creating review comment for PR #${pull_number}...`);
 
   await octokit.pulls.createReview({
     owner,
@@ -277,7 +265,7 @@ async function createReviewComment(owner: string, repo: string, pull_number: num
     event: APPROVE_REVIEWS ? "APPROVE" : "COMMENT",
   });
 
-  core.info(`Review ${APPROVE_REVIEWS ? "approved" : "commented"} successfully.`);
+  printWithColor(`Review ${APPROVE_REVIEWS ? "approved" : "commented"} successfully.`);
 }
 
 async function hasExistingReview(owner: string, repo: string, pull_number: number): Promise<boolean> {
@@ -293,7 +281,7 @@ async function hasExistingReview(owner: string, repo: string, pull_number: numbe
 // ********************************** 3. Run **********************************
 async function run() {
   try {
-    core.info("Starting AI code review process...");
+    printWithColor("Starting AI code review process...");
 
     const prDetails = await getPRDetails();
     let diff: string | null;
@@ -359,7 +347,7 @@ async function run() {
       },
     });
 
-    core.info(`Processing ${eventData.action} event...`);
+    printWithColor(`Processing ${eventData.action} event...`);
     const existingReview = await hasExistingReview(prDetails.owner, prDetails.repo, prDetails.pull_number);
 
     if (eventData.action === "opened" || (eventData.action === "synchronize" && !existingReview)) {
@@ -402,7 +390,7 @@ async function run() {
     const filteredDiff = changedFiles.filter((file) => {
       return !excludePatterns.some((pattern) => minimatch(file.to ?? "", pattern));
     });
-    core.info(`After filtering, ${filteredDiff.length} files remain.`);
+    printWithColor(`After filtering, ${filteredDiff.length} files remain.`);
 
     const comments = await analyzeCode(filteredDiff, prDetails);
     if (APPROVE_REVIEWS || comments.length > 0) {
@@ -410,7 +398,7 @@ async function run() {
     } else {
       core.info("No comments to post.");
     }
-    core.info("AI code review process completed successfully.");
+    printWithColor("AI code review process completed successfully.");
   } catch (error: any) {
     core.error("Error:", error);
     core.setFailed(`Action failed: ${error.message}`);
