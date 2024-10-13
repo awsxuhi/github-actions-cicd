@@ -15,11 +15,8 @@ export function sanitizeJsonString(input: string): string {
       .replace(/\\f/g, "\f")
       // 移除反引号
       .replace(/`/g, "")
-      // 移除非标准的反斜杠（但保留 JSON 标准中的 \n, \t, \r, \b, \f）
+      // 移除多余的反斜杠（但保留 JSON 标准中的 \n, \t, \r, \b, \f）
       .replace(/\\(?!["\\/bfnrt])/g, "")
-      // 将非成对的双引号（即未被正确转义的双引号）替换为 JSON 合法的格式
-      .replace(/(?<!\\)"/g, '\\"')
-      // 将单引号替换为双引号
-      .replace(/'/g, '"')
+    // 保持单引号和双引号不变，不再替换单引号
   );
 }
