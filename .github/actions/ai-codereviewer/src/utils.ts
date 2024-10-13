@@ -1,11 +1,7 @@
 import path from "path";
+import { getStep, incrementStep } from "./utils_step_manager";
 
 export function printWithColor(variableName: string, variableValue?: unknown, depth: number | null = null, colors: boolean = true): void {
-  // 初始化 step 静态变量（若未定义则从 1 开始）
-  if (!printWithColor.step) {
-    printWithColor.step = 1;
-  }
-
   // 获取调用者的文件名和行号
   const error = new Error();
   const stack = error.stack;
@@ -24,22 +20,22 @@ export function printWithColor(variableName: string, variableValue?: unknown, de
     }
   }
 
+  const step = getStep();
+
   // 打印颜色化的字符串和变量内容
   // 使用 console.dir 打印出对象的完整结构，比console.log好的地方是打印出来的对象的属性值含有颜色
   // depth: null：确保显示对象的所有嵌套层级，打印出完整的结构。
   // colors: true：让终端输出的结果带有颜色，方便阅读。
   if (variableValue !== undefined) {
-    console.log(`\n\n\x1b[36m%s\x1b[0m`, `Printing ${variableName} <${file}:${line}>`);
+    console.log(`\n\x1b[36m%s\x1b[0m`, `Printing ${variableName} <${file}:${line}>`);
     console.dir(variableValue, { depth, colors });
   } else {
-    console.log(`\n\n\x1b[94m%s\x1b[0m`, `Step ${printWithColor.step}: ${variableName} <${file}:${line}>`);
+    console.log(`\n\x1b[93m%s\x1b[0m`, `Step ${step}: ${variableName} <${file}:${line}>`);
   }
 
-  printWithColor.step++;
+  // 增加 step 计数
+  incrementStep();
 }
-
-// 声明 step 属性为静态属性
-printWithColor.step = 1;
 
 /**
 颜色	代码
