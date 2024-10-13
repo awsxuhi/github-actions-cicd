@@ -217,7 +217,7 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
       core.error("JSON block not found in the response.");
       throw new Error("Invalid response format: JSON block not found");
     }
-
+    printWithColor("res (extracted the Json part)", res);
     // // 移除Markdown代码块并确保有效的JSON
     // const jsonString = res.replace(/^```json\s*|\s*```$/g, "").trim();
 
