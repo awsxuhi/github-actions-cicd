@@ -30,7 +30,7 @@ export function printWithColor(variableName: string, variableValue?: unknown, de
     console.log(`\n\x1b[36m%s\x1b[0m`, `Printing ${variableName} <${file}:${line}>`);
     console.dir(variableValue, { depth, colors });
   } else {
-    console.log(`\n\x1b[93m%s\x1b[0m`, `Step ${step}: ${variableName} <${file}:${line}>`);
+    console.log(`\n\x1b[95m%s\x1b[0m`, `Step ${step}: ${variableName} <${file}:${line}>`);
   }
 
   // 增加 step 计数
