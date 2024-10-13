@@ -2,9 +2,9 @@
   "name": "aws-genai-codereview",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/index.js",
+  "main": "dist/run.js",
   "scripts": {
-    "build": "ncc build src/index.ts -o dist --source-map --license THIRD-PARTY-LICENSES && cp node_modules/@dqbd/tiktoken/tiktoken_bg.wasm dist/tiktoken_bg.wasm",
+    "build": "ncc build src/run.ts -o dist --source-map --license THIRD-PARTY-LICENSES && cp node_modules/@dqbd/tiktoken/tiktoken_bg.wasm dist/tiktoken_bg.wasm",
     "compile": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

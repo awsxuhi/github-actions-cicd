@@ -236,7 +236,7 @@ async function hasExistingReview(owner: string, repo: string, pull_number: numbe
 }
 
 // ********************************** 3. Run **********************************
-async function run() {
+async function run(retryCount: number = 3) {
   try {
     core.info("Starting AI code review process...");
 
@@ -315,12 +315,20 @@ async function run() {
     printWithColor("AI code review process completed successfully.");
   } catch (error: any) {
     core.error("Error:", error);
-    core.setFailed(`Action failed: ${error.message}`);
-    process.exit(1); // This line ensures the GitHub action fails
+    // 检查重试次数，尝试重试
+    if (retryCount > 0) {
+      core.warning(`Retrying... Attempts remaining: ${retryCount}`);
+      await new Promise((resolve) => setTimeout(resolve, 5000)); // 等待5秒
+      await run(retryCount - 1); // 递归调用 run 并减少重试次数
+    } else {
+      core.setFailed(`Action failed after multiple retries: ${error.message}`);
+      process.exit(1); // 确保 GitHub Action 失败
+    }
   }
 }
 
-run().catch((error) => {
+/* retry 1 time, interval 5 seconds */
+run(1).catch((error) => {
   core.error("Unhandled error in run():", error);
   core.setFailed(`Unhandled error in run(): ${(error as Error).message}`);
   process.exit(1);
