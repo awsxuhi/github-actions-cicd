@@ -51,7 +51,6 @@ async function analyzeCode(changedFiles: File[], prDetails: PRDetails): Promise<
   const prompt = createPrompt(changedFiles, prDetails);
   const aiResponse = await getAIResponse(prompt);
   core.info(JSON.stringify(aiResponse, null, 2));
-  console.log(JSON.stringify(aiResponse, null, 2));
 
   const comments: Array<GithubComment> = [];
 
@@ -149,7 +148,6 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
     const response = await bedrockClient.send(command);
     const responseData = new TextDecoder("utf-8").decode(response.body);
     const responseBody = JSON.parse(responseData);
-    printWithColor("responseBody", responseBody);
 
     let res = responseBody.content[0].text.trim() || "{}";
 
@@ -162,12 +160,12 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
       res = res.substring(jsonStartIndex + 7, jsonEndIndex).trim();
     } else {
       core.info("No JSON block markers found. Proceeding with entire text as JSON.");
-      // throw new Error("Invalid response format: JSON block not found");
     }
+    printWithColor("res(JSON Part Extracted) from LLM before sanitizeJsonString", res);
 
     // 清理字符串中可能影响 JSON 解析的字符
     const sanitizedString = sanitizeJsonString(res);
-    printWithColor("res (extracted JSON part or entire text)", sanitizedString);
+    printWithColor("res(JSON Part Extracted) from LLM after sanitizeJsonString", sanitizedString);
 
     try {
       let data = JSON.parse(sanitizedString);
@@ -277,7 +275,9 @@ async function run() {
     const existingReview = await hasExistingReview(prDetails.owner, prDetails.repo, prDetails.pull_number);
 
     if (context.payload.action === "opened" || (context.payload.action === "synchronize" && !existingReview)) {
-      diff = await getFullDiff(context.payload.action, prDetails.owner, prDetails.repo, prDetails.pull_number, octokit);
+      const baseSha = context.payload.pull_request.base?.sha;
+      const headSha = context.payload.pull_request.head?.sha;
+      diff = await getFullDiff(context.payload.action, prDetails, baseSha, headSha, octokit);
     } else if (context.payload.action === "synchronize" && existingReview) {
       const newBaseSha = context.payload.before;
       const newHeadSha = context.payload.after;
@@ -295,7 +295,7 @@ async function run() {
 
     const changedFiles = parseDiff(diff);
     printWithColor(`Found ${changedFiles.length} changed files.`);
-    printWithColor("changedFiles", changedFiles);
+    printWithColor("changedFiles (first 2)", changedFiles.slice(0, 2));
 
     const excludePatterns = core
       .getInput("exclude")

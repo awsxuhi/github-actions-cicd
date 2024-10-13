@@ -21,7 +21,6 @@ export function printContextPayloadKeyItems(): void {
     },
     pull_request: payload.pull_request
       ? {
-          _links: payload.pull_request._links,
           base: {
             label: payload.pull_request.base?.label,
             ref: payload.pull_request.base?.ref,
@@ -51,6 +50,7 @@ export function printContextPayloadKeyItems(): void {
           commits: payload.pull_request.commits,
           commits_url: payload.pull_request.commits_url,
           before: payload.pull_request.before,
+          _links: payload.pull_request._links,
         }
       : undefined,
   });
