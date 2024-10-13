@@ -207,21 +207,17 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
     }
 
     // 清理字符串中可能影响 JSON 解析的字符
-    res = sanitizeJsonString(res);
-
-    printWithColor("res (extracted JSON part or entire text)", res);
-
-    // // 移除Markdown代码块并确保有效的JSON
-    // const jsonString = res.replace(/^```json\s*|\s*```$/g, "").trim();
+    const sanitizedString = sanitizeJsonString(res);
+    printWithColor("res (extracted JSON part or entire text)", sanitizedString);
 
     try {
-      let data = JSON.parse(res);
+      let data = JSON.parse(sanitizedString);
       if (!Array.isArray(data?.comments)) {
         throw new Error("Invalid response from Bedrock API: 'comments' not found");
       }
       return data.comments;
     } catch (parseError) {
-      core.error(`Failed to parse JSON: ${res}`);
+      core.error(`Failed to parse JSON: ${sanitizedString}`);
       core.error(`Parse error: ${parseError}`);
       throw parseError;
     }
@@ -315,7 +311,8 @@ async function run() {
       const newBaseSha = context.payload.before;
       const newHeadSha = context.payload.after;
 
-      core.info(`Comparing commits: ${newBaseSha} -> ${newHeadSha}`);
+      core.info(`Comparing commits: ${newBaseSha.slice(0, 7)} -> ${newHeadSha.slice(0, 7)}`);
+
       const response = await octokit.repos.compareCommits({
         headers: {
           accept: "application/vnd.github.v3.diff",
@@ -325,7 +322,8 @@ async function run() {
         base: newBaseSha,
         head: newHeadSha,
       });
-      printWithColor("response.data", response.data);
+      printWithColor("response.data (diff)", response.data);
+      printWithColor("response.data (diff)", String(response.data));
       diff = String(response.data);
     } else {
       core.info(`Unsupported event: ${process.env.GITHUB_EVENT_NAME}`);
@@ -338,7 +336,7 @@ async function run() {
     }
 
     const changedFiles = parseDiff(diff);
-    core.info(`Found ${changedFiles.length} changed files.`);
+    printWithColor(`Found ${changedFiles.length} changed files.`);
     printWithColor("changedFiles", changedFiles);
 
     const excludePatterns = core

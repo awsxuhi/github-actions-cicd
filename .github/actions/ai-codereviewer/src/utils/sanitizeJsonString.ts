@@ -1,22 +1,25 @@
 export function sanitizeJsonString(input: string): string {
-  return (
-    input
-      // 移除非标准的转义字符，例如 \xNN 格式
+  return input.replace(/"((?:[^"\\]|\\.|[\r\n])*?)"/g, (match, p1) => {
+    const fixed = p1
+      // Escape backslashes
+      .replace(/\\/g, "\\\\")
+      // Escape double quotes
+      .replace(/"/g, '\\"')
+      // Replace control characters with their Unicode escape sequences
+      .replace(/[\b]/g, "\\b")
+      .replace(/\f/g, "\\f")
+      .replace(/\n/g, "\\n")
+      .replace(/\r/g, "\\r")
+      .replace(/\t/g, "\\t")
+      // Remove non-standard escape sequences like \xNN or \uNNNN
       .replace(/\\x[0-9A-Fa-f]{2}/g, "")
-      // 移除非标准的 Unicode 转义字符，例如 \uNNNN 格式
       .replace(/\\u[0-9A-Fa-f]{4}/g, "")
-      // 移除控制字符（ASCII 0-31 和 127），这些字符通常不出现在 JSON 字符串中
+      // Remove other control characters (ASCII codes 0-31 and 127)
       .replace(/[\x00-\x1F\x7F]/g, "")
-      // 保留 JSON 标准转义字符
-      .replace(/\\n/g, "\n")
-      .replace(/\\t/g, "\t")
-      .replace(/\\r/g, "\r")
-      .replace(/\\b/g, "\b")
-      .replace(/\\f/g, "\f")
-      // 移除反引号
+      // Remove backticks
       .replace(/`/g, "")
-      // 移除多余的反斜杠（但保留 JSON 标准中的 \n, \t, \r, \b, \f）
-      .replace(/\\(?!["\\/bfnrt])/g, "")
-    // 保持单引号和双引号不变，不再替换单引号
-  );
+      // Remove any remaining invalid escape sequences
+      .replace(/\\(?!["\\/bfnrt])/g, "");
+    return `"${fixed}"`;
+  });
 }
