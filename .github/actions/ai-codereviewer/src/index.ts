@@ -5,7 +5,7 @@ import parseDiff, { Chunk, File } from "parse-diff";
 import { minimatch } from "minimatch";
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { context } from "@actions/github";
-import { printWithColor } from "./utils";
+import { printWithColor, sanitizeJsonString } from "./utils";
 
 const GITHUB_TOKEN: string = core.getInput("GITHUB_TOKEN");
 const REVIEW_MAX_COMMENTS: string = core.getInput("REVIEW_MAX_COMMENTS");
@@ -205,7 +205,12 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
       core.info("No JSON block markers found. Proceeding with entire text as JSON.");
       // throw new Error("Invalid response format: JSON block not found");
     }
+
+    // 清理字符串中可能影响 JSON 解析的字符
+    res = sanitizeJsonString(res);
+
     printWithColor("res (extracted JSON part or entire text)", res);
+
     // // 移除Markdown代码块并确保有效的JSON
     // const jsonString = res.replace(/^```json\s*|\s*```$/g, "").trim();
 
