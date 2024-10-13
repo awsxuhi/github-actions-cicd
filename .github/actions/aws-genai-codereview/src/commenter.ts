@@ -2,7 +2,7 @@ import { info, warning } from "@actions/core";
 // eslint-disable-next-line camelcase
 import { context as github_context } from "@actions/github";
 import { octokit } from "./octokit";
-import { printWithColor } from "./utils";
+import { printWithColor } from "@/utils";
 
 // eslint-disable-next-line camelcase
 const context = github_context;
@@ -17,7 +17,6 @@ export const COMMENT_REPLY_TAG = "<!-- This is an auto-generated reply by AI rev
 export const SUMMARIZE_TAG = "<!-- This is an auto-generated comment: summarize by AI reviewer -->";
 
 export const IN_PROGRESS_START_TAG = "<!-- This is an auto-generated comment: summarize review in progress by AI reviewer -->";
-
 export const IN_PROGRESS_END_TAG = "<!-- end of auto-generated comment: summarize review in progress by AI reviewer -->";
 
 export const DESCRIPTION_START_TAG = "<!-- This is an auto-generated comment: release notes by AI reviewer -->";

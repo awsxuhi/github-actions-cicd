@@ -18,7 +18,7 @@ import { octokit } from "./octokit";
 import { type Options } from "./options";
 import { type Prompts } from "./prompts";
 import { getTokenCount } from "./tokenizer";
-import { printWithColor } from "./utils";
+import { printWithColor } from "@/utils";
 
 // eslint-disable-next-line camelcase
 const context = github_context;
@@ -43,6 +43,21 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     warning("Skipped: context.payload.pull_request is null");
     return;
   }
+
+  /* test code */
+  const pr = await octokit.pulls.get({
+    owner: repo.owner,
+    repo: repo.repo,
+    // eslint-disable-next-line camelcase
+    pull_number: 11,
+  });
+  let body = "";
+  if (pr.data.body) {
+    body = pr.data.body;
+  }
+  printWithColor("body = pr.data.body", body);
+
+  /* end of test code */
 
   const inputs: Inputs = new Inputs();
   inputs.title = context.payload.pull_request.title;
