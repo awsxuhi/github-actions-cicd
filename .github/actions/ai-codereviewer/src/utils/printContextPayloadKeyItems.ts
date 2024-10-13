@@ -40,6 +40,7 @@ export function printContextPayloadKeyItems(): void {
             sha: payload.pull_request.head?.sha,
           },
           title: payload.pull_request.title,
+          body: payload.pull_request.body, // This is the PR Description
           number: payload.pull_request.number,
           diff_url: payload.pull_request.diff_url,
           patch_url: payload.pull_request.patch_url,

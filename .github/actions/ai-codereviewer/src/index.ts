@@ -282,9 +282,7 @@ async function hasExistingReview(owner: string, repo: string, pull_number: numbe
 // ********************************** 3. Run **********************************
 async function run() {
   try {
-    printWithColor("Starting AI code review process...");
-    const prDetails = await getPRDetails();
-    printWithColor("prDetails", prDetails);
+    core.info("Starting AI code review process...");
 
     let diff: string | null;
 
@@ -296,13 +294,27 @@ async function run() {
     /* 
     Although `pull_request` and `pull_request_target` are different event types, they both generate the same structure for `context.payload.pull_request`. GitHub stores the pull request data in `context.payload.pull_request`, making it applicable to both event types. Therefore, when the program reaches this point, `context.payload.pull_request` will have a value.
     */
-    printContextPayloadKeyItems(); // Print info for debuging
     if (context.payload.pull_request == null) {
       core.warning("Skipped: context.payload.pull_request is null");
       return;
     }
 
+    if (!context.payload.repository) {
+      core.error("Error: context.payload.repository is undefined or null");
+      return;
+    }
+
     printWithColor(`Processing ${context.payload.action} event...`);
+    printContextPayloadKeyItems(); // Print info for debuging and programming to know the structure of the payload
+    const prDetails = {
+      owner: context.payload.repository.owner.login,
+      repo: context.payload.repository.name,
+      pull_number: context.payload.number,
+      title: context.payload.pull_request.title ?? "",
+      description: context.payload.pull_request.body ?? "",
+    };
+    printWithColor("prDetails", prDetails);
+
     const existingReview = await hasExistingReview(prDetails.owner, prDetails.repo, prDetails.pull_number);
 
     if (context.payload.action === "opened" || (context.payload.action === "synchronize" && !existingReview)) {
