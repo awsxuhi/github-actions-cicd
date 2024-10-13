@@ -1,13 +1,13 @@
 export function sanitizeJsonString(input: string): string {
   return (
     input
-      // 移除 \xNN 格式的转义字符
+      // 移除非标准的转义字符，例如 \xNN 格式
       .replace(/\\x[0-9A-Fa-f]{2}/g, "")
-      // 移除 \uNNNN 格式的非标准 Unicode 转义字符
+      // 移除非标准的 Unicode 转义字符，例如 \uNNNN 格式
       .replace(/\\u[0-9A-Fa-f]{4}/g, "")
-      // 移除其他可能影响 JSON 解析的非标准控制字符
+      // 移除控制字符（ASCII 0-31 和 127），这些字符通常不出现在 JSON 字符串中
       .replace(/[\x00-\x1F\x7F]/g, "")
-      // 替换 \\n、\\t 等符合 JSON 标准的字符
+      // 保留 JSON 标准转义字符
       .replace(/\\n/g, "\n")
       .replace(/\\t/g, "\t")
       .replace(/\\r/g, "\r")
@@ -15,9 +15,11 @@ export function sanitizeJsonString(input: string): string {
       .replace(/\\f/g, "\f")
       // 移除反引号
       .replace(/`/g, "")
-      // 移除多余的反斜杠（但保留 JSON 标准中的 \n, \t, \r, \b, \f）
+      // 移除非标准的反斜杠（但保留 JSON 标准中的 \n, \t, \r, \b, \f）
       .replace(/\\(?!["\\/bfnrt])/g, "")
-      // 替换单引号为双引号
+      // 将非成对的双引号（即未被正确转义的双引号）替换为 JSON 合法的格式
+      .replace(/(?<!\\)"/g, '\\"')
+      // 将单引号替换为双引号
       .replace(/'/g, '"')
   );
 }
