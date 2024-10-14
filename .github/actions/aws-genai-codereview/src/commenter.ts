@@ -199,7 +199,7 @@ ${COMMENT_TAG}`;
       例如，您可以在 GitHub 的 UI 中开始撰写 review 评论，但在完成之前选择离开或切换到其他页面，这时 review 会保持为 PENDING 状态。
       因此，不是所有有 diff 的 review 都是 PENDING 的。PENDING 状态的 review 仅在审阅者创建了评论但还未提交 review 时出现。
       */
-      const pendingReview = reviews.data.find((review) => review.state === "PENDING");
+      const pendingReview = reviews.data.find((review: { state: string }) => review.state === "PENDING");
 
       if (pendingReview) {
         info(`Deleting pending review for PR #${pullNumber} id: ${pendingReview.id}`);
@@ -229,6 +229,7 @@ ${statusMsg}
 
     if (this.reviewCommentsBuffer.length === 0) {
       // Submit empty review with statusMsg
+      // 如果原来没有comment，就直接新创建一个comment
       info(`Submitting empty review for PR #${pullNumber}`);
       try {
         await octokit.pulls.createReview({
@@ -246,6 +247,21 @@ ${statusMsg}
       }
       return;
     }
+    // 否则，原来针对同一个代码片段有comment，就需要先删除原来的comment，再增加一个新的
+    // 这个for循环先删除老的comment
+    /*
+async getCommentsAtRange 的返回值是否总是单个元素的数组？ 是的，在实际情况下，返回值应该只有一个元素的数组，因为同一文件、相同的 startLine 和 endLine 不太可能有多个不同的评论。但为了保持代码的灵活性并避免潜在的 API 不一致（即意外的重复评论），这里还是使用了 for 循环去遍历所有匹配的评论。这种写法有助于处理极少数情况下的重复情况（例如，API 返回的数据中有重复项），确保每一个符合条件的评论都被处理。
+
+每个 comment(就是下面代码中的c) 的结构通常包括：
+
+id: 评论的唯一标识符
+body: 评论内容
+path: 文件路径
+line: 单行评论时的行号
+start_line（可选）: 多行评论的起始行号
+in_reply_to_id（可选）: 若为回复评论，表示上层评论的 id
+user: 用户信息对象，通常包含 login（用户登录名）等属性
+    */
     for (const comment of this.reviewCommentsBuffer) {
       const comments = await this.getCommentsAtRange(pullNumber, comment.path, comment.startLine, comment.endLine);
       for (const c of comments) {
@@ -265,8 +281,10 @@ ${statusMsg}
       }
     }
 
+    // submitReview 中执行 await this.deletePendingReview(pullNumber); 的目的是什么？ deletePendingReview 用来清除当前处于 PENDING 状态的审查。这种状态通常是因为上次审查时，用户保存了评论但未提交。提交新审查之前删除这些 PENDING 状态的审查，以避免出现未提交的旧评论。
     await this.deletePendingReview(pullNumber);
 
+    // 接下来生成新的comment
     const generateCommentData = (comment: any) => {
       const commentData: any = {
         path: comment.path,
@@ -274,17 +292,37 @@ ${statusMsg}
         line: comment.endLine,
       };
 
+      // comment.startLine === comment.endLine: 表示此评论仅针对一行代码，即单行评论而非多行评论。start_line 可选: 单行评论不需要 start_line 属性
       if (comment.startLine !== comment.endLine) {
         // eslint-disable-next-line camelcase
         commentData.start_line = comment.startLine;
         // eslint-disable-next-line camelcase
-        commentData.start_side = "RIGHT";
+        commentData.start_side = "RIGHT"; // start_side = "RIGHT": 表示评论的侧边（即 diff 视图的右侧），表示评论针对合并后的代码变更。
       }
 
       return commentData;
     };
 
     try {
+      /*
+在 GitHub 的审查 API 中，createReview 和 submitReview 的确是两个不同的操作。
+
+createReview: 创建一个新的审查请求对象并附带批量的评论数据，但这个操作只是将审查标记为 "待提交" (PENDING) 状态。这个操作等于在 GitHub 上保存了审查草稿，允许您在 PENDING 状态下进一步编辑评论，甚至添加更多评论，而不将审查立即公开到 PR 页面中。
+
+submitReview: 将 PENDING 状态的审查真正提交到 PR 页面，使其正式生效并变成可见。只有在调用 submitReview 之后，GitHub 才会将整个审查视为已提交，并展示所有的批量评论给 PR 的参与者。
+
+这样设计的原因是，GitHub 支持在审查正式提交之前进行多次评论的编辑和调整。最终的审查只有在调用 submitReview 后才会被完全公开。这就像在 GitHub UI 中开始一个审查、添加评论，然后选择“提交审查”的动作。
+
+在代码中，createReview 是直接提交评论的关键操作。在 GitHub 的 API 中，当 createReview 被调用并设置 event 参数为 "COMMENT" 或 "APPROVE" 时，它会将所有评论发布到 PR 页面上，而不需要调用 submitReview。因此，在这里调用 createReview 后，评论已经提交，submitReview 不再必要。
+
+原因可以总结如下：
+
+createReview 的 event 参数：在调用 createReview 时，指定的 event 参数（例如 "COMMENT" 或 "APPROVE"）会决定评论是否立刻发布。使用 "COMMENT" 表示将评论作为一般反馈提交，而 "APPROVE" 则表示将评论作为批准审查的一部分提交。
+
+直接发布评论：在这种情况下，createReview 已经将所有评论一次性提交并发布到 PR 页面。submitReview 通常只在需要将 PENDING 状态的审查转换为公开状态时才使用。在这段代码中，设置了 event，所以 GitHub API 已经将审查从 PENDING 状态发布到页面。
+
+因此，如果 createReview 的 event 被指定为非 PENDING，该方法就会直接发布所有评论，不再需要调用 submitReview。
+*/
       const review = await octokit.pulls.createReview({
         owner: repo.owner,
         repo: repo.repo,
@@ -323,6 +361,11 @@ ${statusMsg}
           ...generateCommentData(comment),
         };
 
+        // createReviewComment(commentData) 是作为 createReview 的失败备选方案调用的。当 octokit.pulls.createReview 方法失败时（例如，网络错误或 API 速率限制），代码会执行 catch 中的逻辑，以防止整个审查流程中断。这样，即使无法批量创建评论（createReview），代码仍然会尝试逐条创建单独的评论，确保审查内容尽可能被添加。总体流程：首先尝试通过 createReview 批量创建一个审查以及所有评论。若失败，则进入 catch 块，逐条添加评论。
+        /*createReview 和 createReviewComment 的区别
+        createReview: 创建一个新的审查流程，用于在代码审查的整体框架内发布多个评论。可在审查的某个 commit_id 下附带多条评论，并最终将审查（review）整体提交。
+        createReviewComment: 直接在特定的 PR 或文件中发布单条评论，而不需要将所有评论作为一个审查整体进行批量提交。这是 createReview 失败后的退路。
+        */
         try {
           await octokit.pulls.createReviewComment(commentData);
         } catch (ee) {
@@ -342,6 +385,10 @@ ${message}
 
 ${COMMENT_REPLY_TAG}
 `;
+
+    /*
+在 reviewCommentReply 函数中，topLevelComment 指的是对代码块的最初评论，即该评论链的第一个评论。这个 topLevelComment 是该讨论的起点，它可能是某个用户（或自动化工具）针对代码块添加的评论，后续的所有回复都会链接到这个评论，以构成一个评论链。
+*/
     try {
       // Post the reply to the user comment
       await octokit.pulls.createReplyForReviewComment({
@@ -369,6 +416,7 @@ ${COMMENT_REPLY_TAG}
         warning(`Failed to reply to the top-level comment ${e}`);
       }
     }
+
     try {
       if (topLevelComment.body.includes(COMMENT_TAG)) {
         // replace COMMENT_TAG with COMMENT_REPLY_TAG in topLevelComment
@@ -409,6 +457,17 @@ ${COMMENT_REPLY_TAG}
   }
 
   async getCommentChainsWithinRange(pullNumber: number, path: string, startLine: number, endLine: number, tag = "") {
+    /**
+     * GitHub 的 API 和 Octokit SDK 提供了一些获取评论的方法，例如：
+
+listReviewComments: 获取 PR 的所有评论。
+listComments: 获取 issue 或 PR 的所有非审查评论。
+不过，GitHub API 没有直接支持获取特定代码行范围内的评论链的功能，尤其是无法直接按 path 和 line 范围检索或构建完整的评论链。为了实现类似的功能，需要：
+
+使用 listReviewComments 或 listComments 获取 PR 中的所有评论。
+自行筛选符合条件的评论（按 path 和 line 等属性）。
+遍历评论链并构建对话结构。
+     */
     const existingComments = await this.getCommentsWithinRange(pullNumber, path, startLine, endLine);
     // find all top most comments
     const topLevelComments = [];
@@ -515,6 +574,18 @@ ${chain}
     }
   }
 
+  // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  // octokit.issues.createComment
+  // 作用：在一个 issue 或 pull request 上创建评论。
+  // 适用范围：可以在普通的 issue 和 pull request 的主线程中添加评论。
+  // 限制：它不会针对特定的代码行或文件，仅仅是在主讨论区域发布评论。
+  // 场景：适合对整个 pull request 提出总体性建议，或者在 pull request 的整体讨论中发布一些通用信息。
+
+  // octokit.pulls.createReviewComment
+  // 作用：在 pull request 的代码行级别创建评论。
+  // 适用范围：只能用于 pull request，且评论会显示在代码的 diff 视图中，附加到特定的文件和行上。
+  // 限制：无法用于普通 issue，它是专门为代码审查设计的，只能在 PR 的代码中使用。
+  // 场景：适合在代码审查时对特定代码行提出具体反馈。
   async create(body: string, target: number) {
     try {
       // get comment ID from the response
@@ -522,7 +593,7 @@ ${chain}
         owner: repo.owner,
         repo: repo.repo,
         // eslint-disable-next-line camelcase
-        issue_number: target,
+        issue_number: target, // pull request number is passed as issue_number
         body,
       });
       // add comment to issueCommentsCache
@@ -649,6 +720,22 @@ ${chain}
 
   // add a commit id to the list of reviewed commit ids
   // if the marker doesn't exist, add it
+  /*
+假设初始 commentBody 为：
+  "This is a PR review comment.
+  <!-- commit_ids_reviewed_start -->
+  <!-- abc123 -->
+  <!-- commit_ids_reviewed_end -->"
+
+调用addReviewedCommitId(commentBody, "def456"); 后结果为：
+  "This is a PR review comment.
+  <!-- commit_ids_reviewed_start -->
+  <!-- abc123 -->
+  <!-- def456 -->
+  <!-- commit_ids_reviewed_end -->"
+
+
+ */
   addReviewedCommitId(commentBody: string, commitId: string): string {
     const start = commentBody.indexOf(COMMIT_ID_START_TAG);
     const end = commentBody.indexOf(COMMIT_ID_END_TAG);
@@ -660,6 +747,18 @@ ${chain}
   }
 
   // given a list of commit ids provide the highest commit id that has been reviewed
+  /*
+在 GitHub Actions 中，context.payload.pull_request.before 确实可以提供一个参考点，但并不能完全替代 getHighestReviewedCommitId 的功能。这两个值在实际用途上有一些区别：
+
+context.payload.pull_request.before：
+
+这个字段是 GitHub 在 pull_request 事件的 synchronize 操作中提供的，用于标识 PR 中代码更新的上一个基准 commit，即推送更新前的最新 commit。
+它用于表示当前推送（push）事件的前一个 commit，而不是根据已审查的 commit 历史记录得出的“最高”或最新审查 commit。
+getHighestReviewedCommitId：
+
+这个函数的目标是根据审查历史，找到最近一次已审查的 commit。它遍历 commitIds 数组，返回在 reviewedCommitIds 中的最后一个匹配 commit，即最近一次的审查进度。
+如果您希望得到最近审查过的 commit 而不仅仅是上一个推送前的 commit，就需要这个函数。
+  */
   getHighestReviewedCommitId(commitIds: string[], reviewedCommitIds: string[]): string {
     for (let i = commitIds.length - 1; i >= 0; i--) {
       if (reviewedCommitIds.includes(commitIds[i])) {
@@ -686,7 +785,7 @@ ${chain}
           page,
         });
 
-        allCommits.push(...commits.data.map((commit) => commit.sha));
+        allCommits.push(...commits.data.map((commit: { sha: string }) => commit.sha)); // 为 commit 指定类型
         page++;
       } while (commits.data.length > 0);
     }

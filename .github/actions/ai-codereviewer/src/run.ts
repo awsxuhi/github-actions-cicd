@@ -221,6 +221,7 @@ async function createReviewComment(owner: string, repo: string, pull_number: num
     pull_number,
     comments,
     event: APPROVE_REVIEWS ? "APPROVE" : "COMMENT",
+    // 在调用 createReview 时，指定的 event 参数（例如 "COMMENT" 或 "APPROVE"）会决定评论是否立刻发布。此时不需要再执行submitReview
   });
 
   printWithColor(`Review ${APPROVE_REVIEWS ? "approved" : "commented"} successfully.`);
