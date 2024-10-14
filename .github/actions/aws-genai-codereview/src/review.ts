@@ -44,7 +44,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     return;
   }
 
-  /* test code */
+  /* xuhi: test code */
   const pr = await octokit.pulls.get({
     owner: repo.owner,
     repo: repo.repo,
@@ -57,7 +57,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   }
   printWithColor("body = pr.data.body", body);
 
-  /* end of test code */
+  /* xuhi: end of test code */
 
   const inputs: Inputs = new Inputs();
   inputs.title = context.payload.pull_request.title;

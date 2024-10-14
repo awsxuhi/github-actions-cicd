@@ -110,6 +110,17 @@ ${tag}`;
   getReleaseNotes(description: string) {
     const releaseNotes = this.getContentWithinTags(description, DESCRIPTION_START_TAG, DESCRIPTION_END_TAG);
     return releaseNotes.replace(/(^|\n)> .*/g, "");
+    /**
+这段代码的作用是从 releaseNotes 字符串中删除所有以 > 开头的行。具体地解释正则表达式 的含义：
+
+^：表示行的开头。
+\n：表示换行符。
+(^|\n)：匹配行的开头或者换行符（即可以匹配字符串的开头或任何一行的开头）。
+>：匹配 > 字符，通常用于引用块（例如在 Markdown 中，> 表示引用）。
+.*：匹配任意数量的字符，表示引用块之后的所有内容。
+/g：全局匹配标志，表示替换字符串中所有符合该正则表达式的部分，而不是仅替换第一个。
+因此，这个正则表达式会匹配所有以 > 开头的行（包括引用标记 > 后的内容），并将这些行替换为空字符串 ""，即删除它们。换句话说，这段代码的作用是删除 releaseNotes 中所有的引用块行。
+     */
   }
 
   async updateDescription(pullNumber: number, message: string) {
@@ -173,6 +184,21 @@ ${COMMENT_TAG}`;
         pull_number: pullNumber,
       });
 
+      /*
+      在 GitHub 的 Pull Request API 中，review 的 state 可以是以下几种状态之一：
+
+      COMMENTED：表示 review 已提交，其中包含评论，但没有任何正式的“批准”或“变更请求”。
+      APPROVED：表示 review 已提交，并且审阅者批准了 Pull Request。
+      CHANGES_REQUESTED：表示 review 已提交，并且审阅者请求进行更改。
+      PENDING：表示 review 尚未提交，审阅者可能正在编写评论或修改 review，但尚未提交完成。
+      在什么情况下 state 为 PENDING？
+
+      PENDING 状态通常在以下情况下出现：
+
+      当审阅者开始创建一个 review，但尚未提交时，GitHub 会将该 review 标记为 PENDING。这通常意味着审阅者可能在创建评论时选择了“保存但不提交”。
+      例如，您可以在 GitHub 的 UI 中开始撰写 review 评论，但在完成之前选择离开或切换到其他页面，这时 review 会保持为 PENDING 状态。
+      因此，不是所有有 diff 的 review 都是 PENDING 的。PENDING 状态的 review 仅在审阅者创建了评论但还未提交 review 时出现。
+      */
       const pendingReview = reviews.data.find((review) => review.state === "PENDING");
 
       if (pendingReview) {

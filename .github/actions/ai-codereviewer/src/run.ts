@@ -1,6 +1,7 @@
 import * as core from "@actions/core";
 import { Octokit } from "@octokit/rest";
-import parseDiff, { Chunk, File } from "parse-diff";
+// import parseDiff, { Chunk, File } from "parse-diff";
+import parseDiff, { Chunk, File } from "@/parse-diff";
 import { minimatch } from "minimatch";
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { context } from "@actions/github";
