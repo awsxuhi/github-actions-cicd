@@ -1,11 +1,12 @@
-import { readFileSync } from "fs";
 import * as core from "@actions/core";
 import { Octokit } from "@octokit/rest";
-import parseDiff, { Chunk, File } from "parse-diff";
+// import parseDiff, { Chunk, File } from "parse-diff";
+import parseDiff, { Chunk, File } from "@/parse-diff";
 import { minimatch } from "minimatch";
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { context } from "@actions/github";
-import { printWithColor } from "./utils";
+import { printContextPayloadKeyItems, printWithColor, sanitizeJsonString } from "@/utils";
+import { getFullDiff, getIncrementalDiff } from "@/diff";
 
 const GITHUB_TOKEN: string = core.getInput("GITHUB_TOKEN");
 const REVIEW_MAX_COMMENTS: string = core.getInput("REVIEW_MAX_COMMENTS");
@@ -44,55 +45,12 @@ interface GithubComment {
 
 // ********************************** 2. Function **********************************
 
-async function getPRDetails(): Promise<PRDetails> {
-  core.info("Fetching PR details...");
-
-  const { repository, number } = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH || "", "utf8"));
-
-  const prResponse = await octokit.pulls.get({
-    owner: repository.owner.login,
-    repo: repository.name,
-    pull_number: number,
-  });
-
-  core.info(`PR details fetched for PR #${number}`);
-
-  return {
-    owner: repository.owner.login,
-    repo: repository.name,
-    pull_number: number,
-    title: prResponse.data.title ?? "",
-    description: prResponse.data.body ?? "",
-  };
-}
-
-/*
-    repository.owner.login 在这段代码中指的是 Pull Request 事件的 base 仓库的所有者。这是因为 GitHub 事件 JSON 文件中的 repository 字段通常表示 Pull Request 目标分支所在的仓库（即 base 仓库），而不是 Pull Request 的源分支（即 head 仓库）。
-
-    因此，repository.owner.login 实际上等于 context.payload.pull_request.base.repo.owner.login，它指向目标仓库的所有者信息（也就是 base 仓库的所有者）。
-   */
-
-async function getDiff(owner: string, repo: string, pull_number: number): Promise<string | null> {
-  core.info(`Fetching diff for PR #${pull_number}...`);
-
-  const response = await octokit.pulls.get({
-    owner,
-    repo,
-    pull_number,
-    mediaType: { format: "diff" },
-  });
-  printWithColor("getDiff: Base(A) vs. Head(C)", response.data);
-  // @ts-expect-error - response.data is a string
-  return response.data;
-}
-
 async function analyzeCode(changedFiles: File[], prDetails: PRDetails): Promise<Array<GithubComment>> {
-  core.info("Analyzing code...");
+  printWithColor("Analyzing code...");
 
   const prompt = createPrompt(changedFiles, prDetails);
   const aiResponse = await getAIResponse(prompt);
   core.info(JSON.stringify(aiResponse, null, 2));
-  console.log(JSON.stringify(aiResponse, null, 2));
 
   const comments: Array<GithubComment> = [];
 
@@ -104,12 +62,12 @@ async function analyzeCode(changedFiles: File[], prDetails: PRDetails): Promise<
     }
   }
 
-  core.info(`Analysis complete. Generated ${comments.length} comments.`);
+  printWithColor(`Analysis complete. Generated ${comments.length} comments.`);
   return comments;
 }
 
 function createPrompt(changedFiles: File[], prDetails: PRDetails): string {
-  core.info("Creating prompt for AI...");
+  printWithColor("Creating prompt for AI...");
   const problemOutline = `Human: Your task is to review pull requests (PR). Instructions:
 - Provide the response in following JSON format:  {"comments": [{"file": <file name>,  "lineNumber":  <line_number>, "reviewComment": "<review comment>"}]}
 - DO NOT give positive comments or compliments.
@@ -141,7 +99,7 @@ TAKE A DEEP BREATH AND WORK ON THIS PROBLEM STEP-BY-STEP.
     }
   }
 
-  core.info("Prompt created successfully.");
+  printWithColor("Prompt created successfully.");
   return `${problemOutline}\n ${diffChunksPrompt.join("\n")}`;
 }
 
@@ -152,7 +110,7 @@ function createPromptForDiffChunk(file: File, chunk: Chunk): string {
   \`\`\`diff
   ${chunk.content}
   ${chunk.changes
-    // @ts-expect-error - ln and ln2 exists where needed
+    // removed leading @, ts-expect-error - ln and ln2 exists where needed
     .map((c) => `${c.ln ? c.ln : c.ln2} ${c.content}`)
     .join("\n")}
   \`\`\`
@@ -161,21 +119,9 @@ function createPromptForDiffChunk(file: File, chunk: Chunk): string {
 }
 
 async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> {
-  core.info("Sending request to Bedrock/Claude API...");
+  printWithColor("Sending request to Bedrock/Claude API...");
 
   try {
-    // const params = {
-    //   modelId: BEDROCK_MODEL_ID,
-    //   body: JSON.stringify({
-    //     prompt: prompt,
-    //     max_tokens_to_sample: RESPONSE_TOKENS,
-    //     temperature: 0.2,
-    //     stop_sequences: ["\n\nHuman:"],
-    //   }),
-    //   contentType: "application/json",
-    //   accept: "application/json",
-    // };
-
     const payload = {
       anthropic_version: "bedrock-2023-05-31", // Claude 版本
       max_tokens: RESPONSE_TOKENS, // 使用 max_tokens 而不是 max_tokens_to_sample
@@ -200,35 +146,35 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
     });
 
     const response = await bedrockClient.send(command);
-
     const responseData = new TextDecoder("utf-8").decode(response.body);
     const responseBody = JSON.parse(responseData);
-    printWithColor("responseBody", responseBody);
+
     let res = responseBody.content[0].text.trim() || "{}";
 
-    // 移除前缀文本，仅保留 JSON 代码块
+    // 直接尝试提取 JSON，如果有 Markdown 包裹则处理，没有则直接解析
     const jsonStartIndex = res.indexOf("```json");
     const jsonEndIndex = res.lastIndexOf("```");
 
     if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {
-      // 提取 JSON 内容部分
+      // 如果有 Markdown 包裹，提取 JSON 内容部分
       res = res.substring(jsonStartIndex + 7, jsonEndIndex).trim();
     } else {
-      core.error("JSON block not found in the response.");
-      throw new Error("Invalid response format: JSON block not found");
+      core.info("No JSON block markers found. Proceeding with entire text as JSON.");
     }
+    printWithColor("res(JSON Part Extracted) from LLM before sanitizeJsonString", res);
 
-    // // 移除Markdown代码块并确保有效的JSON
-    // const jsonString = res.replace(/^```json\s*|\s*```$/g, "").trim();
+    // 清理字符串中可能影响 JSON 解析的字符
+    const sanitizedString = sanitizeJsonString(res);
+    printWithColor("res(JSON Part Extracted) from LLM after sanitizeJsonString", sanitizedString);
 
     try {
-      let data = JSON.parse(res);
+      let data = JSON.parse(sanitizedString);
       if (!Array.isArray(data?.comments)) {
-        throw new Error("Invalid response from OpenAI API");
+        throw new Error("Invalid response from Bedrock API: 'comments' not found");
       }
       return data.comments;
     } catch (parseError) {
-      core.error(`Failed to parse JSON: ${res}`);
+      core.error(`Failed to parse JSON: ${sanitizedString}`);
       core.error(`Parse error: ${parseError}`);
       throw parseError;
     }
@@ -251,7 +197,7 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
 }
 
 function createComments(changedFiles: File[], aiResponses: Array<AICommentResponse>): Array<GithubComment> {
-  core.info("Creating GitHub comments from AI responses...");
+  printWithColor("Creating GitHub comments from AI responses...");
 
   return aiResponses
     .flatMap((aiResponse) => {
@@ -267,7 +213,7 @@ function createComments(changedFiles: File[], aiResponses: Array<AICommentRespon
 }
 
 async function createReviewComment(owner: string, repo: string, pull_number: number, comments: Array<GithubComment>): Promise<void> {
-  core.info(`Creating review comment for PR #${pull_number}...`);
+  printWithColor(`Creating review comment for PR #${pull_number}...`);
 
   await octokit.pulls.createReview({
     owner,
@@ -275,9 +221,10 @@ async function createReviewComment(owner: string, repo: string, pull_number: num
     pull_number,
     comments,
     event: APPROVE_REVIEWS ? "APPROVE" : "COMMENT",
+    // 在调用 createReview 时，指定的 event 参数（例如 "COMMENT" 或 "APPROVE"）会决定评论是否立刻发布。此时不需要再执行submitReview
   });
 
-  core.info(`Review ${APPROVE_REVIEWS ? "approved" : "commented"} successfully.`);
+  printWithColor(`Review ${APPROVE_REVIEWS ? "approved" : "commented"} successfully.`);
 }
 
 async function hasExistingReview(owner: string, repo: string, pull_number: number): Promise<boolean> {
@@ -291,95 +238,52 @@ async function hasExistingReview(owner: string, repo: string, pull_number: numbe
 }
 
 // ********************************** 3. Run **********************************
-async function run() {
+async function run(retryCount: number = 3) {
   try {
     core.info("Starting AI code review process...");
 
-    const prDetails = await getPRDetails();
     let diff: string | null;
-    const eventData = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH ?? "", "utf8"));
-    printWithColor("prDetails", prDetails);
-    printWithColor("eventData", eventData); // the same with context.payload
 
     if (context.eventName !== "pull_request" && context.eventName !== "pull_request_target") {
       core.warning(`Skipped: current event is ${context.eventName}, only support pull_request event`);
       return;
     }
 
-    // 虽然 pull_request 和 pull_request_target 是不同的事件类型，但它们的结构相同，GitHub 会在 context.payload.pull_request 中存储拉取请求的数据。因此，context.payload.pull_request 适用于两种事件类型。
+    /* 
+    Although `pull_request` and `pull_request_target` are different event types, they both generate the same structure for `context.payload.pull_request`. GitHub stores the pull request data in `context.payload.pull_request`, making it applicable to both event types. Therefore, when the program reaches this point, `context.payload.pull_request` will have a value.
+    */
     if (context.payload.pull_request == null) {
       core.warning("Skipped: context.payload.pull_request is null");
       return;
     }
-    printWithColor("context.payload", {
-      action: context.payload.action,
-      before: context.payload.before,
-      after: context.payload.after,
-      number: context.payload.number,
-      repository: {
-        name: context.payload.repository?.name,
-        owner: {
-          login: context.payload.repository?.owner.login,
-          type: context.payload.repository?.owner.type,
-        },
-      },
-      sender: {
-        login: context.payload.sender?.login,
-      },
-      pull_request: {
-        _links: context.payload.pull_request._links,
-        base: {
-          label: context.payload.pull_request.base.label,
-          ref: context.payload.pull_request.base.ref,
-          sha: context.payload.pull_request.base.sha,
-          repo: {
-            owner: {
-              login: context.payload.pull_request.base.repo.owner.login,
-              type: context.payload.pull_request.base.repo.owner.type,
-            },
-            name: context.payload.pull_request.base.repo.name,
-          },
-        },
-        head: {
-          label: context.payload.pull_request.head.label,
-          ref: context.payload.pull_request.head.ref,
-          sha: context.payload.pull_request.head.sha,
-        },
-        title: context.payload.pull_request.title,
-        number: context.payload.pull_request.number,
-        diff_url: context.payload.pull_request.diff_url,
-        patch_url: context.payload.pull_request.patch_url,
-        review_comments: context.payload.pull_request.review_comments,
-        review_comments_url: context.payload.pull_request.review_comments_url,
-        comments: context.payload.pull_request.comments,
-        comments_url: context.payload.pull_request.comments_url,
-        commits: context.payload.pull_request.commits,
-        commits_url: context.payload.pull_request.commits_url,
-        before: context.payload.pull_request.before,
-      },
-    });
 
-    core.info(`Processing ${eventData.action} event...`);
+    if (!context.payload.repository) {
+      core.error("Error: context.payload.repository is undefined or null");
+      return;
+    }
+
+    printWithColor(`Processing ${context.payload.action} event...`);
+    printContextPayloadKeyItems(); // Print info for debuging and programming to know the structure of the payload
+    const prDetails = {
+      owner: context.payload.repository.owner.login,
+      repo: context.payload.repository.name,
+      pull_number: context.payload.number,
+      title: context.payload.pull_request.title ?? "",
+      description: context.payload.pull_request.body ?? "",
+    };
+    printWithColor("prDetails", prDetails);
+
     const existingReview = await hasExistingReview(prDetails.owner, prDetails.repo, prDetails.pull_number);
 
-    if (eventData.action === "opened" || (eventData.action === "synchronize" && !existingReview)) {
-      diff = await getDiff(prDetails.owner, prDetails.repo, prDetails.pull_number);
-    } else if (eventData.action === "synchronize" && existingReview) {
-      const newBaseSha = eventData.before;
-      const newHeadSha = eventData.after;
+    if (context.payload.action === "opened" || (context.payload.action === "synchronize" && !existingReview)) {
+      const baseSha = context.payload.pull_request.base?.sha;
+      const headSha = context.payload.pull_request.head?.sha;
+      diff = await getFullDiff(context.payload.action, prDetails, baseSha, headSha, octokit);
+    } else if (context.payload.action === "synchronize" && existingReview) {
+      const newBaseSha = context.payload.before;
+      const newHeadSha = context.payload.after;
 
-      core.info(`Comparing commits: ${newBaseSha} -> ${newHeadSha}`);
-      const response = await octokit.repos.compareCommits({
-        headers: {
-          accept: "application/vnd.github.v3.diff",
-        },
-        owner: prDetails.owner,
-        repo: prDetails.repo,
-        base: newBaseSha,
-        head: newHeadSha,
-      });
-      printWithColor("response.data", response.data);
-      diff = String(response.data);
+      diff = await getIncrementalDiff(prDetails, newBaseSha, newHeadSha, octokit);
     } else {
       core.info(`Unsupported event: ${process.env.GITHUB_EVENT_NAME}`);
       return;
@@ -391,8 +295,8 @@ async function run() {
     }
 
     const changedFiles = parseDiff(diff);
-    core.info(`Found ${changedFiles.length} changed files.`);
-    printWithColor("changedFiles", changedFiles);
+    printWithColor(`Found ${changedFiles.length} changed files.`);
+    printWithColor("changedFiles (first 2)", changedFiles.slice(0, 2));
 
     const excludePatterns = core
       .getInput("exclude")
@@ -402,7 +306,7 @@ async function run() {
     const filteredDiff = changedFiles.filter((file) => {
       return !excludePatterns.some((pattern) => minimatch(file.to ?? "", pattern));
     });
-    core.info(`After filtering, ${filteredDiff.length} files remain.`);
+    printWithColor(`After filtering, ${filteredDiff.length} files remain.`);
 
     const comments = await analyzeCode(filteredDiff, prDetails);
     if (APPROVE_REVIEWS || comments.length > 0) {
@@ -410,16 +314,23 @@ async function run() {
     } else {
       core.info("No comments to post.");
     }
-    core.info("AI code review process completed successfully.");
+    printWithColor("AI code review process completed successfully.");
   } catch (error: any) {
     core.error("Error:", error);
-    core.setFailed(`Action failed: ${error.message}`);
-    process.exit(1); // This line ensures the GitHub action fails
+    // 检查重试次数，尝试重试
+    if (retryCount > 0) {
+      core.warning(`Retrying... Attempts remaining: ${retryCount}`);
+      await new Promise((resolve) => setTimeout(resolve, 5000)); // 等待5秒
+      await run(retryCount - 1); // 递归调用 run 并减少重试次数
+    } else {
+      core.setFailed(`Action failed after multiple retries: ${error.message}`);
+      process.exit(1); // 确保 GitHub Action 失败
+    }
   }
 }
 
-core.info("Starting AI code review action...");
-run().catch((error) => {
+/* retry 1 time, interval 5 seconds */
+run(1).catch((error) => {
   core.error("Unhandled error in run():", error);
   core.setFailed(`Unhandled error in run(): ${(error as Error).message}`);
   process.exit(1);

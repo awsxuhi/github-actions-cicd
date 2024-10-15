@@ -4,6 +4,7 @@
     "lib": ["ESNext"] /* Specify a set of bundled library declaration files that describe the target runtime environment. */,
     "module": "ESNext" /* Specify what module code is generated. // 设置为 esnext 以支持 ESM */,
     "rootDir": "src" /* Specify the root folder within your source files. */,
+    "moduleResolution": "node" /* Specify how TypeScript looks up a file from a given module specifier. vs. "classic"*/,
     "outDir": "lib" /* Specify an output folder for all emitted files. */,
     "baseUrl": "./" /* Specify the base directory to resolve non-relative module names. */,
     "paths": {
@@ -18,7 +19,6 @@
     "sourceMap": false,
     "allowJs": true,
     "checkJs": false,
-    "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noImplicitAny": true

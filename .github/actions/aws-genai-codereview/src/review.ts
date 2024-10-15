@@ -18,7 +18,7 @@ import { octokit } from "./octokit";
 import { type Options } from "./options";
 import { type Prompts } from "./prompts";
 import { getTokenCount } from "./tokenizer";
-import { printWithColor } from "./utils";
+import { printWithColor, getDiffBetweenCommits, debugPrintCommitSha, areFilesArrayEqual } from "@/utils";
 
 // eslint-disable-next-line camelcase
 const context = github_context;
@@ -44,116 +44,20 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     return;
   }
 
-  // printWithColor("context.payload.pull_request", context.payload.pull_request);
-  /*
-这段代码中的变量都来源于 `context.payload.pull_request`，它们表示一个 Pull Request 的相关信息。每个字段都对应 Pull Request 不同的属性和内容，以下是具体解释：
-
-1. **`title`**：  
-   表示 Pull Request 的标题，即用户在创建 Pull Request 时输入的简短描述。通常用来概括 Pull Request 的主要变更或目的。
-
-2. **`number`**：  
-   表示 Pull Request 的编号。这是一个 GitHub 仓库中唯一的数字，用来标识这个 Pull Request。在该仓库中每个新的 Pull Request 会自动分配一个递增的编号。
-
-3. **`diff_url`**：  
-   表示一个 URL，链接到 Pull Request 的 `diff` 文件。这个文件展示了 Pull Request 中的代码差异，采用 `diff` 格式显示修改内容。
-
-4. **`patch_url`**：  
-   表示一个 URL，链接到 Pull Request 的 `patch` 文件。这个文件包含的是 Pull Request 的补丁信息，可以直接应用到代码仓库中，用来将 Pull Request 中的修改合并到本地仓库。
-
-5. **`review_comments`**：  
-   表示 Pull Request 中代码审查评论的数量。代码审查评论是针对具体的代码行或代码块进行的评论，通常是由代码审查者提出的。
-
-6. **`review_comments_url`**：  
-   表示一个 URL，链接到 Pull Request 的代码审查评论的 API 端点。通过这个 URL 可以获取或操作与代码审查相关的评论。
-
-7. **`comments`**：  
-   表示 Pull Request 的常规评论数量。这些评论通常与代码无关，而是对 Pull Request 进行的整体讨论或反馈。
-
-8. **`comments_url`**：  
-   表示一个 URL，链接到 Pull Request 的评论 API 端点。通过这个 URL 可以获取或操作 Pull Request 的常规评论。
-
-9. **`commits`**：  
-   表示 Pull Request 中包含的提交（commit）数量。一个 Pull Request 可以包含多个代码提交。
-
-10. **`commits_url`**：  
-    表示一个 URL，链接到 Pull Request 的提交 API 端点。通过这个 URL 可以获取该 Pull Request 中的所有提交信息。
-
-11. **`body`**：  
-    表示 Pull Request 的正文内容，通常是用户在创建 Pull Request 时写的描述性文字。这个字段确实是特指 Pull Request 创建时的第一条帖子内容，通常包含更详细的解释或上下文，说明 Pull Request 的目的、改动的细节、需要注意的问题等。
-
----
-
-**`comments` 和 `review_comments` 的区别：**
-- **`comments`** 是指 Pull Request 整体下的讨论，用户可以在 Pull Request 中发表评论，这些评论是和具体的代码无关的讨论。
-- **`review_comments`** 则是代码审查者在审查代码时对特定代码行或文件作出的评论。它是基于代码的反馈和讨论，而不是整个 Pull Request。
-
-总结来说，`comments` 更加广泛地适用于整个 Pull Request，而 `review_comments` 是精确到代码行的讨论。q
-  */
-  printWithColor("context.payload", {
-    action: context.payload.action,
-    before: context.payload.before,
-    after: context.payload.after,
-    number: context.payload.number,
-    repository: {
-      name: context.payload.repository?.name,
-      owner: {
-        login: context.payload.repository?.owner.login,
-        type: context.payload.repository?.owner.type,
-      },
-    },
-    sender: {
-      login: context.payload.sender?.login,
-    },
-    pull_request: {
-      _links: context.payload.pull_request._links,
-      base: {
-        label: context.payload.pull_request.base.label,
-        ref: context.payload.pull_request.base.ref,
-        sha: context.payload.pull_request.base.sha,
-        repo: {
-          owner: {
-            login: context.payload.pull_request.base.repo.owner.login,
-            type: context.payload.pull_request.base.repo.owner.type,
-          },
-          name: context.payload.pull_request.base.repo.name,
-        },
-      },
-      head: {
-        label: context.payload.pull_request.head.label,
-        ref: context.payload.pull_request.head.ref,
-        sha: context.payload.pull_request.head.sha,
-      },
-      title: context.payload.pull_request.title,
-      number: context.payload.pull_request.number,
-      diff_url: context.payload.pull_request.diff_url,
-      patch_url: context.payload.pull_request.patch_url,
-      review_comments: context.payload.pull_request.review_comments,
-      review_comments_url: context.payload.pull_request.review_comments_url,
-      comments: context.payload.pull_request.comments,
-      comments_url: context.payload.pull_request.comments_url,
-      commits: context.payload.pull_request.commits,
-      commits_url: context.payload.pull_request.commits_url,
-      before: context.payload.pull_request.before,
-    },
+  /* xuhi: test code */
+  const pr = await octokit.pulls.get({
+    owner: repo.owner,
+    repo: repo.repo,
+    // eslint-disable-next-line camelcase
+    pull_number: 10,
   });
+  let body = "";
+  if (pr.data.body) {
+    body = pr.data.body;
+  }
+  printWithColor("body = pr.data.body", body);
 
-  printWithColor("context.payload", context.payload);
-
-  // xuhi: added this to get the diff of the PR
-  // getDiffString的值是一个字符串，就是diff_url链接的网页显示的内容
-  // octokit.pulls.get 方法可以用于获取 Pull Request 的差异数据，其返回的 diff 内容与 compareCommits 方法的 diff 数据基本一致。
-  /**
-    如果base是A，执行一个pull request后，head是B，再次执行一次pull request后，head变成C，那么此时通过octokit.pulls.get得到的diff是A和C的差异，不是B和C的差异
-  */
-  const { data: getDiffString } = await octokit.pulls.get({
-    owner: context.payload.pull_request.base.repo.owner.login,
-    repo: context.payload.pull_request.base.repo.name,
-    pull_number: context.payload.pull_request.number,
-    mediaType: { format: "diff" },
-  });
-  printWithColor("getDiff: Base(A) vs. Head(C)", getDiffString);
-
-  /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+  /* xuhi: end of test code */
 
   const inputs: Inputs = new Inputs();
   inputs.title = context.payload.pull_request.title;
@@ -176,19 +80,27 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   let existingSummarizeCmtBody = "";
   if (existingSummarizeCmt != null) {
     existingSummarizeCmtBody = existingSummarizeCmt.body;
-    printWithColor("existingSummarizeCmtBody = existingSummarizeCmt.body", existingSummarizeCmtBody);
+    printWithColor("existingSummarizeCmtBody = existingSummarizeCmt.body (like allComments[0].body)", existingSummarizeCmtBody);
     inputs.rawSummary = commenter.getRawSummary(existingSummarizeCmtBody);
     inputs.shortSummary = commenter.getShortSummary(existingSummarizeCmtBody);
     existingCommitIdsBlock = commenter.getReviewedCommitIdsBlock(existingSummarizeCmtBody);
   }
 
   const allCommitIds = await commenter.getAllCommitIds();
+  printWithColor("allCommitIds", allCommitIds);
   // find highest reviewed commit id
   let highestReviewedCommitId = "";
   if (existingCommitIdsBlock !== "") {
     highestReviewedCommitId = commenter.getHighestReviewedCommitId(allCommitIds, commenter.getReviewedCommitIds(existingCommitIdsBlock));
   }
 
+  /************************************************************************************************
+  条件 highestReviewedCommitId === context.payload.pull_request.head.sha 的情况实际上是非常少见的，通常只会出现在以下特殊情况之一：
+
+  当前最新 commit 已经被审查过：这种情况会发生在 上一次审查的 commit 刚好就是最新的 head commit 时。例如，如果上次审查记录的 commit 就是当前 PR 的最新 commit，那么 highestReviewedCommitId 和 head.sha 会相等。这种情况下，意味着没有新的变更需要审查，因为最新的提交已经审查过了。
+
+  所有 commit 已被逐一审查完：如果团队每次推送新的 commit 后都会立即审查，那么最后一次审查记录会跟 head commit 保持一致。这种情况也会触发 highestReviewedCommitId === context.payload.pull_request.head.sha 条件，表示 PR 中所有代码都已经被审查，当前没有待审查的新增代码。
+   ***********************************************************************************************/
   if (highestReviewedCommitId === "" || highestReviewedCommitId === context.payload.pull_request.head.sha) {
     info(`Will review from the base commit: ${context.payload.pull_request.base.sha as string}`);
     highestReviewedCommitId = context.payload.pull_request.base.sha;
@@ -198,57 +110,25 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
 
   /************************************************************************************************
   这段代码通过 GitHub API 的 compareCommits 方法，分别获取两个 diff（差异）：
-  1. incrementalDiff：从 highestReviewedCommitId（上次审查的最后一次提交）到 PR 最新提交（context.payload.pull_request.head.sha）的增量差异。
+  1. incrementalDiff：从 highestReviewedCommitId（上次审查的最后一次提交，这是已经审查过的）到 PR 最新提交（context.payload.pull_request.head.sha）的增量差异。
   2. targetBranchDiff：从目标分支的基准提交（context.payload.pull_request.base.sha）到 PR 最新提交的完整差异。
    ***********************************************************************************************/
 
-  /**
-   * xuhi: Let me use another way to get the previousCommit
-   */
+  await debugPrintCommitSha(
+    context.payload.pull_request.base.sha,
+    context.payload.pull_request.head.sha,
+    highestReviewedCommitId,
+    context.payload.before,
+    context.payload.after
+  );
 
-  const allCommits = await octokit.pulls.listCommits({
-    owner: context.payload.pull_request.base.repo.owner.login,
-    repo: context.payload.pull_request.base.repo.name,
-    pull_number: context.payload.pull_request.number,
-  });
-  const previousHeadSha = allCommits.data[allCommits.data.length - 2].sha;
-  const newHeadSha = allCommits.data[allCommits.data.length - 1].sha;
-
-  const responseFromCompareCommits = await octokit.repos.compareCommits({
-    owner: context.payload.pull_request.base.repo.owner.login,
-    repo: context.payload.pull_request.base.repo.name,
-    base: previousHeadSha, // `B` 的 SHA
-    head: newHeadSha, // `C` 的 SHA
-    headers: {
-      accept: "application/vnd.github.v3.diff",
-    },
-  });
-  const incrementalDiff_xuhi = String(responseFromCompareCommits.data);
-  printWithColor("responseFromCompareCommits.data", responseFromCompareCommits.data); //undefined
-  printWithColor("incrementalDiff_xuhi", incrementalDiff_xuhi); // yes, a good file diff string
-  printWithColor("previousHeadSha", previousHeadSha);
-  printWithColor("newHeadSha", newHeadSha);
-  printWithColor("highestReviewedCommitId", highestReviewedCommitId);
-  printWithColor("context.payload.pull_request.head.sha", context.payload.pull_request.head.sha);
-  // previousHeadSha==highestReviewedCommitId, newHeadSha==context.payload.pull_request.head.sha
-
-  // Fetch the diff between the highest reviewed commit and the latest commit of the PR branch
-  const incrementalDiff = await octokit.repos.compareCommits({
-    owner: repo.owner,
-    repo: repo.repo,
-    base: highestReviewedCommitId,
-    head: context.payload.pull_request.head.sha,
-  });
-  printWithColor("incrementalDiff.data.files", incrementalDiff.data.files?.slice(0, 3));
+  // Fetch the diff between the highest REVIEWED commit and the latest commit of the PR branch
+  const incrementalDiff = await getDiffBetweenCommits(repo.owner, repo.repo, highestReviewedCommitId, context.payload.pull_request.head.sha);
+  printWithColor("Incremental diff since last review (incrementalDiff.data.files):", incrementalDiff.data.files?.slice(0, 3));
 
   // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
-  const targetBranchDiff = await octokit.repos.compareCommits({
-    owner: repo.owner,
-    repo: repo.repo,
-    base: context.payload.pull_request.base.sha,
-    head: context.payload.pull_request.head.sha,
-  });
-  // printWithColor("targetBranchDiff.data.files", targetBranchDiff.data.files?.slice(0, 3));
+  const targetBranchDiff = await getDiffBetweenCommits(repo.owner, repo.repo, context.payload.pull_request.base.sha, context.payload.pull_request.head.sha);
+  printWithColor("Target branch base diff (targetBranchDiff.data.files):", targetBranchDiff.data.files?.slice(0, 3));
 
   // 定义 GitHub 文件差异的类型
   type FileDiff = components["schemas"]["diff-entry"];
@@ -266,6 +146,10 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   const files = targetBranchFiles.filter((targetBranchFile) =>
     incrementalFiles.some((incrementalFile) => incrementalFile.filename === targetBranchFile.filename)
   );
+
+  // 调用示例
+  const isEqual = areFilesArrayEqual(files, incrementalFiles);
+  info(`Comparison result: ${isEqual ? "Files are equal to incrementalFiles." : "Files are NOT equal to incrementalFiles."}`);
 
   // 如果 files.length === 0，说明从上次审查的提交到最新提交之间没有任何文件发生过变化
   if (files.length === 0) {
@@ -300,7 +184,12 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
 
   // find hunks to review
   // githubConcurrencyLimit(async () => {...}) 的用法意味着每次调用这个函数时，最多只会有 options.githubConcurrencyLimit 个异步任务同时执行。多余的任务将排队等待。这种机制常用于防止超过 API 请求限制，避免引发 429 "Too Many Requests" 错误。
-  const filteredFiles: Array<[string, string, string, Array<[number, number, string]>] | null> = await Promise.all(
+  /**
+   filteredFiles 代码块的目的是从一组文件（filterSelectedFiles）中获取每个文件的内容和差异信息（patch）。这段代码结合 Promise.all 和 githubConcurrencyLimit 并发限制函数，在不超过 GitHub API 速率限制的前提下逐个处理文件内容，并将包含有效差异信息的文件保存到 filteredFiles 数组中。
+   */
+  type FilteredFile = [string, string, string, Array<[number, number, string]>];
+
+  const filteredFiles: Array<FilteredFile | null> = await Promise.all(
     filterSelectedFiles.map((file) =>
       githubConcurrencyLimit(async () => {
         // retrieve file contents
@@ -320,6 +209,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
             if (!Array.isArray(contents.data)) {
               if (contents.data.type === "file" && contents.data.content != null) {
                 fileContent = Buffer.from(contents.data.content, "base64").toString();
+                // printWithColor(`fileContent of file: ${file.filename}(full content of that file)`, fileContent);
               }
             }
           }
@@ -331,14 +221,18 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
         if (file.patch != null) {
           fileDiff = file.patch;
         }
+        // printWithColor("file.patch", file.patch);
 
         const patches: Array<[number, number, string]> = [];
         for (const patch of splitPatch(file.patch)) {
+          // printWithColor("patch", patch);
           const patchLines = patchStartEndLine(patch); // patch ==> a hunk
+          // printWithColor("patchLines", patchLines);
           if (patchLines == null) {
             continue;
           }
           const hunks = parsePatch(patch);
+          // printWithColor("hunks=parsePatch(patch)", hunks);
           if (hunks == null) {
             continue;
           }
@@ -356,8 +250,10 @@ ${hunks.oldHunk}
 </old_hunk>
 `;
           patches.push([patchLines.newHunk.startLine, patchLines.newHunk.endLine, hunksStr]);
+          // printWithColor("patchLines.newHunk.startLine, patchLines.newHunk.endLine, hunksStr]", patches[patches.length - 1]);
         }
         if (patches.length > 0) {
+          console.log([file.filename, fileContent, fileDiff, patches]);
           return [file.filename, fileContent, fileDiff, patches] as [string, string, string, Array<[number, number, string]>];
         } else {
           return null;
@@ -366,8 +262,19 @@ ${hunks.oldHunk}
     )
   );
 
+  // Print the first 2 elements for debug purpose
+  if (filteredFiles.length === 0) {
+    printWithColor("filteredFiles is empty.");
+  } else if (filteredFiles.length === 1) {
+    printWithColor("filteredFiles has only one element:", filteredFiles[0]);
+  } else {
+    printWithColor("The 1st element of filteredFiles:", filteredFiles[0]);
+    printWithColor("The 2nd element of filteredFiles:", filteredFiles[1]);
+  }
+
   // Filter out any null results
-  const filesAndChanges = filteredFiles.filter((file) => file !== null) as Array<[string, string, string, Array<[number, number, string]>]>;
+  // const filesAndChanges = filteredFiles.filter((file) => file !== null) as Array<[string, string, string, Array<[number, number, string]>]>;
+  const filesAndChanges = filteredFiles.filter((file): file is FilteredFile => file !== null);
 
   if (filesAndChanges.length === 0) {
     error("Skipped: no files to review");
@@ -441,6 +348,7 @@ ${
     // summarize content
     try {
       const [summarizeResp] = await lightBot.chat(summarizePrompt);
+      printWithColor("summarizeResp", summarizeResp);
 
       if (summarizeResp === "") {
         info("summarize: nothing obtained from bedrock");
@@ -460,6 +368,7 @@ ${
 
             // remove this line from the comment
             const summary = summarizeResp.replace(triageRegex, "").trim();
+            printWithColor("summary (triage removed)", summary);
             info(`filename: ${filename}, triage: ${triage}`);
             return [filename, summary, needsReview];
           }

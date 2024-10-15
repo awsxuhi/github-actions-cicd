@@ -2,9 +2,9 @@
   "name": "ai-codereviewer",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/index.js",
+  "main": "dist/run.js",
   "scripts": {
-    "build": "ncc build src/index.ts -o dist --source-map --license THIRD-PARTY-LICENSES",
+    "build": "ncc build src/run.ts -o dist --source-map --license THIRD-PARTY-LICENSES",
     "compile": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
