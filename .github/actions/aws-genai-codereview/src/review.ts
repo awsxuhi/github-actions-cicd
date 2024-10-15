@@ -18,7 +18,7 @@ import { octokit } from "./octokit";
 import { type Options } from "./options";
 import { type Prompts } from "./prompts";
 import { getTokenCount } from "./tokenizer";
-import { printWithColor, getDiffBetweenCommits, debugPrintCommitSha, debugPrintCommitShaUsingListcommits } from "@/utils";
+import { printWithColor, getDiffBetweenCommits, debugPrintCommitSha, areFilesArrayEqual } from "@/utils";
 
 // eslint-disable-next-line camelcase
 const context = github_context;
@@ -147,6 +147,10 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     incrementalFiles.some((incrementalFile) => incrementalFile.filename === targetBranchFile.filename)
   );
 
+  // 调用示例
+  const isEqual = areFilesArrayEqual(files, incrementalFiles);
+  info(`Comparison result: ${isEqual ? "Files are equal to incrementalFiles." : "Files are NOT equal to incrementalFiles."}`);
+
   // 如果 files.length === 0，说明从上次审查的提交到最新提交之间没有任何文件发生过变化
   if (files.length === 0) {
     info("No new files to review since the last commit.");
@@ -180,6 +184,9 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
 
   // find hunks to review
   // githubConcurrencyLimit(async () => {...}) 的用法意味着每次调用这个函数时，最多只会有 options.githubConcurrencyLimit 个异步任务同时执行。多余的任务将排队等待。这种机制常用于防止超过 API 请求限制，避免引发 429 "Too Many Requests" 错误。
+  /**
+   filteredFiles 代码块的目的是从一组文件（filterSelectedFiles）中获取每个文件的内容和差异信息（patch）。这段代码结合 Promise.all 和 githubConcurrencyLimit 并发限制函数，在不超过 GitHub API 速率限制的前提下逐个处理文件内容，并将包含有效差异信息的文件保存到 filteredFiles 数组中。
+   */
   const filteredFiles: Array<[string, string, string, Array<[number, number, string]>] | null> = await Promise.all(
     filterSelectedFiles.map((file) =>
       githubConcurrencyLimit(async () => {
@@ -200,6 +207,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
             if (!Array.isArray(contents.data)) {
               if (contents.data.type === "file" && contents.data.content != null) {
                 fileContent = Buffer.from(contents.data.content, "base64").toString();
+                printWithColor("fileContent", fileContent);
               }
             }
           }
@@ -211,14 +219,18 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
         if (file.patch != null) {
           fileDiff = file.patch;
         }
+        printWithColor("file.patch", file.patch);
 
         const patches: Array<[number, number, string]> = [];
         for (const patch of splitPatch(file.patch)) {
+          printWithColor("patch", patch);
           const patchLines = patchStartEndLine(patch); // patch ==> a hunk
+          printWithColor("patchLines", patchLines);
           if (patchLines == null) {
             continue;
           }
           const hunks = parsePatch(patch);
+          printWithColor("hunks=parsePatch(patch)", hunks);
           if (hunks == null) {
             continue;
           }
@@ -236,8 +248,11 @@ ${hunks.oldHunk}
 </old_hunk>
 `;
           patches.push([patchLines.newHunk.startLine, patchLines.newHunk.endLine, hunksStr]);
+          printWithColor("patchLines.newHunk.startLine, patchLines.newHunk.endLine, hunksStr]", patches[patches.length - 1]);
         }
         if (patches.length > 0) {
+          printWithColor("filteredFiles");
+          console.log([file.filename, fileContent, fileDiff, patches]);
           return [file.filename, fileContent, fileDiff, patches] as [string, string, string, Array<[number, number, string]>];
         } else {
           return null;
