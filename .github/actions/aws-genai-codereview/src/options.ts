@@ -95,7 +95,11 @@ export class Options {
 
   checkPath(path: string): boolean {
     const ok = this.pathFilters.check(path);
-    info(`checking path: ${path} => ${ok}`);
+    if (ok) {
+      info(`checking path: ${path} => ${ok}, File change detected and will be reviewed.`);
+    } else {
+      info(`checking path: ${path} => ${ok}, File change ignored and will not be reviewed.`);
+    }
     return ok;
   }
 }

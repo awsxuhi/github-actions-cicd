@@ -122,15 +122,6 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     context.payload.after
   );
 
-  await debugPrintCommitShaUsingListcommits(
-    context.payload.pull_request.base.repo.owner.login,
-    context.payload.pull_request.base.repo.name,
-    context.payload.pull_request.number,
-    context.payload.pull_request.base.sha,
-    context.payload.pull_request.head.sha,
-    highestReviewedCommitId
-  );
-
   // Fetch the diff between the highest REVIEWED commit and the latest commit of the PR branch
   const incrementalDiff = await getDiffBetweenCommits(repo.owner, repo.repo, highestReviewedCommitId, context.payload.pull_request.head.sha);
   printWithColor("Incremental diff since last review (incrementalDiff.data.files):", incrementalDiff.data.files?.slice(0, 3));
