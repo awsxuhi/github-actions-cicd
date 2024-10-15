@@ -18,7 +18,7 @@ import { octokit } from "./octokit";
 import { type Options } from "./options";
 import { type Prompts } from "./prompts";
 import { getTokenCount } from "./tokenizer";
-import { printWithColor } from "@/utils";
+import { printWithColor, getDiffBetweenCommits, debugPrintCommitSha, debugPrintCommitShaUsingListcommits } from "@/utils";
 
 // eslint-disable-next-line camelcase
 const context = github_context;
@@ -80,19 +80,27 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   let existingSummarizeCmtBody = "";
   if (existingSummarizeCmt != null) {
     existingSummarizeCmtBody = existingSummarizeCmt.body;
-    printWithColor("existingSummarizeCmtBody = existingSummarizeCmt.body", existingSummarizeCmtBody);
+    printWithColor("existingSummarizeCmtBody = existingSummarizeCmt.body (like allComments[0].body)", existingSummarizeCmtBody);
     inputs.rawSummary = commenter.getRawSummary(existingSummarizeCmtBody);
     inputs.shortSummary = commenter.getShortSummary(existingSummarizeCmtBody);
     existingCommitIdsBlock = commenter.getReviewedCommitIdsBlock(existingSummarizeCmtBody);
   }
 
   const allCommitIds = await commenter.getAllCommitIds();
+  printWithColor("allCommitIds", allCommitIds);
   // find highest reviewed commit id
   let highestReviewedCommitId = "";
   if (existingCommitIdsBlock !== "") {
     highestReviewedCommitId = commenter.getHighestReviewedCommitId(allCommitIds, commenter.getReviewedCommitIds(existingCommitIdsBlock));
   }
 
+  /************************************************************************************************
+  条件 highestReviewedCommitId === context.payload.pull_request.head.sha 的情况实际上是非常少见的，通常只会出现在以下特殊情况之一：
+
+  当前最新 commit 已经被审查过：这种情况会发生在 上一次审查的 commit 刚好就是最新的 head commit 时。例如，如果上次审查记录的 commit 就是当前 PR 的最新 commit，那么 highestReviewedCommitId 和 head.sha 会相等。这种情况下，意味着没有新的变更需要审查，因为最新的提交已经审查过了。
+
+  所有 commit 已被逐一审查完：如果团队每次推送新的 commit 后都会立即审查，那么最后一次审查记录会跟 head commit 保持一致。这种情况也会触发 highestReviewedCommitId === context.payload.pull_request.head.sha 条件，表示 PR 中所有代码都已经被审查，当前没有待审查的新增代码。
+   ***********************************************************************************************/
   if (highestReviewedCommitId === "" || highestReviewedCommitId === context.payload.pull_request.head.sha) {
     info(`Will review from the base commit: ${context.payload.pull_request.base.sha as string}`);
     highestReviewedCommitId = context.payload.pull_request.base.sha;
@@ -102,57 +110,34 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
 
   /************************************************************************************************
   这段代码通过 GitHub API 的 compareCommits 方法，分别获取两个 diff（差异）：
-  1. incrementalDiff：从 highestReviewedCommitId（上次审查的最后一次提交）到 PR 最新提交（context.payload.pull_request.head.sha）的增量差异。
+  1. incrementalDiff：从 highestReviewedCommitId（上次审查的最后一次提交，这是已经审查过的）到 PR 最新提交（context.payload.pull_request.head.sha）的增量差异。
   2. targetBranchDiff：从目标分支的基准提交（context.payload.pull_request.base.sha）到 PR 最新提交的完整差异。
    ***********************************************************************************************/
 
-  /**
-   * xuhi: Let me use another way to get the previousCommit
-   */
+  await debugPrintCommitSha(
+    context.payload.pull_request.base.sha,
+    context.payload.pull_request.head.sha,
+    highestReviewedCommitId,
+    context.payload.before,
+    context.payload.after
+  );
 
-  const allCommits = await octokit.pulls.listCommits({
-    owner: context.payload.pull_request.base.repo.owner.login,
-    repo: context.payload.pull_request.base.repo.name,
-    pull_number: context.payload.pull_request.number,
-  });
-  const previousHeadSha = allCommits.data[allCommits.data.length - 2].sha;
-  const newHeadSha = allCommits.data[allCommits.data.length - 1].sha;
+  await debugPrintCommitShaUsingListcommits(
+    context.payload.pull_request.base.repo.owner.login,
+    context.payload.pull_request.base.repo.name,
+    context.payload.pull_request.number,
+    context.payload.pull_request.base.sha,
+    context.payload.pull_request.head.sha,
+    highestReviewedCommitId
+  );
 
-  const responseFromCompareCommits = await octokit.repos.compareCommits({
-    owner: context.payload.pull_request.base.repo.owner.login,
-    repo: context.payload.pull_request.base.repo.name,
-    base: previousHeadSha, // `B` 的 SHA
-    head: newHeadSha, // `C` 的 SHA
-    headers: {
-      accept: "application/vnd.github.v3.diff",
-    },
-  });
-  const incrementalDiff_xuhi = String(responseFromCompareCommits.data);
-  printWithColor("responseFromCompareCommits.data", responseFromCompareCommits.data); //undefined
-  printWithColor("incrementalDiff_xuhi", incrementalDiff_xuhi); // yes, a good file diff string
-  printWithColor("previousHeadSha", previousHeadSha);
-  printWithColor("newHeadSha", newHeadSha);
-  printWithColor("highestReviewedCommitId", highestReviewedCommitId);
-  printWithColor("context.payload.pull_request.head.sha", context.payload.pull_request.head.sha);
-  // previousHeadSha==highestReviewedCommitId, newHeadSha==context.payload.pull_request.head.sha
-
-  // Fetch the diff between the highest reviewed commit and the latest commit of the PR branch
-  const incrementalDiff = await octokit.repos.compareCommits({
-    owner: repo.owner,
-    repo: repo.repo,
-    base: highestReviewedCommitId,
-    head: context.payload.pull_request.head.sha,
-  });
-  printWithColor("incrementalDiff.data.files", incrementalDiff.data.files?.slice(0, 3));
+  // Fetch the diff between the highest REVIEWED commit and the latest commit of the PR branch
+  const incrementalDiff = await getDiffBetweenCommits(repo.owner, repo.repo, highestReviewedCommitId, context.payload.pull_request.head.sha);
+  printWithColor("Incremental diff since last review (incrementalDiff.data.files):", incrementalDiff.data.files?.slice(0, 3));
 
   // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
-  const targetBranchDiff = await octokit.repos.compareCommits({
-    owner: repo.owner,
-    repo: repo.repo,
-    base: context.payload.pull_request.base.sha,
-    head: context.payload.pull_request.head.sha,
-  });
-  // printWithColor("targetBranchDiff.data.files", targetBranchDiff.data.files?.slice(0, 3));
+  const targetBranchDiff = await getDiffBetweenCommits(repo.owner, repo.repo, context.payload.pull_request.base.sha, context.payload.pull_request.head.sha);
+  printWithColor("Target branch base diff (targetBranchDiff.data.files):", targetBranchDiff.data.files?.slice(0, 3));
 
   // 定义 GitHub 文件差异的类型
   type FileDiff = components["schemas"]["diff-entry"];

@@ -682,6 +682,9 @@ ${chain}
       if (allComments[0]) {
         printWithColor("allComments[0]", allComments[0], 1);
       } // for debug purpose
+      if (allComments[1]) {
+        printWithColor("allComments[1].body", allComments[1].body, 1);
+      } // for debug purpose
       return allComments;
     } catch (e: any) {
       warning(`Failed to list comments: ${e}`);
@@ -759,6 +762,15 @@ getHighestReviewedCommitId：
 这个函数的目标是根据审查历史，找到最近一次已审查的 commit。它遍历 commitIds 数组，返回在 reviewedCommitIds 中的最后一个匹配 commit，即最近一次的审查进度。
 如果您希望得到最近审查过的 commit 而不仅仅是上一个推送前的 commit，就需要这个函数。
   */
+  /*
+getHighestReviewedCommitId 方法的作用
+您理解正确，getHighestReviewedCommitId 方法的确是为了找到最近一次已审查的 commit，以便在下次代码审查时：
+
+略过自上次审查以来的多个 commit，聚焦于从最新的已审查 commit 到当前 commit 的更改。
+优化审查效率：这样可以避免重复审查已审过的内容，仅关注自上次审查后的新代码更改。
+增量审查：通过计算上次审查过的 commit 和当前最新 commit 的 diff，可实现增量审查，即每次仅查看未审查过的更改，而不是整个 diff。
+这种逻辑在进行增量代码审查时非常有用，特别是在大型项目中频繁提交的情况下，能有效减少重复工作。
+ */
   getHighestReviewedCommitId(commitIds: string[], reviewedCommitIds: string[]): string {
     for (let i = commitIds.length - 1; i >= 0; i--) {
       if (reviewedCommitIds.includes(commitIds[i])) {
