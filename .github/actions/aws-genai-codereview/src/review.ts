@@ -187,7 +187,9 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   /**
    filteredFiles 代码块的目的是从一组文件（filterSelectedFiles）中获取每个文件的内容和差异信息（patch）。这段代码结合 Promise.all 和 githubConcurrencyLimit 并发限制函数，在不超过 GitHub API 速率限制的前提下逐个处理文件内容，并将包含有效差异信息的文件保存到 filteredFiles 数组中。
    */
-  const filteredFiles: Array<[string, string, string, Array<[number, number, string]>] | null> = await Promise.all(
+  type FilteredFile = [string, string, string, Array<[number, number, string]>];
+
+  const filteredFiles: Array<FilteredFile | null> = await Promise.all(
     filterSelectedFiles.map((file) =>
       githubConcurrencyLimit(async () => {
         // retrieve file contents
@@ -207,7 +209,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
             if (!Array.isArray(contents.data)) {
               if (contents.data.type === "file" && contents.data.content != null) {
                 fileContent = Buffer.from(contents.data.content, "base64").toString();
-                printWithColor("fileContent", fileContent);
+                // printWithColor(`fileContent of file: ${file.filename}(full content of that file)`, fileContent);
               }
             }
           }
@@ -219,18 +221,18 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
         if (file.patch != null) {
           fileDiff = file.patch;
         }
-        printWithColor("file.patch", file.patch);
+        // printWithColor("file.patch", file.patch);
 
         const patches: Array<[number, number, string]> = [];
         for (const patch of splitPatch(file.patch)) {
-          printWithColor("patch", patch);
+          // printWithColor("patch", patch);
           const patchLines = patchStartEndLine(patch); // patch ==> a hunk
-          printWithColor("patchLines", patchLines);
+          // printWithColor("patchLines", patchLines);
           if (patchLines == null) {
             continue;
           }
           const hunks = parsePatch(patch);
-          printWithColor("hunks=parsePatch(patch)", hunks);
+          // printWithColor("hunks=parsePatch(patch)", hunks);
           if (hunks == null) {
             continue;
           }
@@ -248,10 +250,9 @@ ${hunks.oldHunk}
 </old_hunk>
 `;
           patches.push([patchLines.newHunk.startLine, patchLines.newHunk.endLine, hunksStr]);
-          printWithColor("patchLines.newHunk.startLine, patchLines.newHunk.endLine, hunksStr]", patches[patches.length - 1]);
+          // printWithColor("patchLines.newHunk.startLine, patchLines.newHunk.endLine, hunksStr]", patches[patches.length - 1]);
         }
         if (patches.length > 0) {
-          printWithColor("filteredFiles");
           console.log([file.filename, fileContent, fileDiff, patches]);
           return [file.filename, fileContent, fileDiff, patches] as [string, string, string, Array<[number, number, string]>];
         } else {
@@ -261,8 +262,19 @@ ${hunks.oldHunk}
     )
   );
 
+  // Print the first 2 elements for debug purpose
+  if (filteredFiles.length === 0) {
+    printWithColor("filteredFiles is empty.");
+  } else if (filteredFiles.length === 1) {
+    printWithColor("filteredFiles has only one element:", filteredFiles[0]);
+  } else {
+    printWithColor("The 1st element of filteredFiles:", filteredFiles[0]);
+    printWithColor("The 2nd element of filteredFiles:", filteredFiles[1]);
+  }
+
   // Filter out any null results
-  const filesAndChanges = filteredFiles.filter((file) => file !== null) as Array<[string, string, string, Array<[number, number, string]>]>;
+  // const filesAndChanges = filteredFiles.filter((file) => file !== null) as Array<[string, string, string, Array<[number, number, string]>]>;
+  const filesAndChanges = filteredFiles.filter((file): file is FilteredFile => file !== null);
 
   if (filesAndChanges.length === 0) {
     error("Skipped: no files to review");
@@ -336,6 +348,7 @@ ${
     // summarize content
     try {
       const [summarizeResp] = await lightBot.chat(summarizePrompt);
+      printWithColor("summarizeResp", summarizeResp);
 
       if (summarizeResp === "") {
         info("summarize: nothing obtained from bedrock");
@@ -355,6 +368,7 @@ ${
 
             // remove this line from the comment
             const summary = summarizeResp.replace(triageRegex, "").trim();
+            printWithColor("summary (triage removed)", summary);
             info(`filename: ${filename}, triage: ${triage}`);
             return [filename, summary, needsReview];
           }
