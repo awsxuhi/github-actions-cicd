@@ -44,20 +44,31 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     return;
   }
 
-  /* xuhi: test code */
+  /* xuhi: test code ******************************************/
+  // octokit.pulls.get 返回的是这个特定 Pull Request 的所有相关详细信息。
+  /*
+    调用 pulls.get 时，会根据传入的 owner、repo 和 pull_number 获取指定的 Pull Request 的数据。
+
+  返回的数据通常包括以下信息（在 pr.data 中）：
+
+  id：Pull Request 的 ID。
+  number：Pull Request 的编号。
+  title：Pull Request 的标题。
+  body：Pull Request 的描述内容（在 pr.data.body 中）。
+  state：Pull Request 的状态（如 open、closed 等）。
+  user：创建该 Pull Request 的用户信息。
+  created_at：创建时间。
+  commits：该 Pull Request 中的提交数。
+  changed_files：更改文件的数量。
+  还有其他许多属性
+  */
   const pr = await octokit.pulls.get({
     owner: repo.owner,
     repo: repo.repo,
-    // eslint-disable-next-line camelcase
-    pull_number: 10,
+    pull_number: context.payload.pull_request.number,
   });
-  let body = "";
-  if (pr.data.body) {
-    body = pr.data.body;
-  }
-  printWithColor("body = pr.data.body", body);
-
-  /* xuhi: end of test code */
+  printWithColor("body = pr.data.body", pr.data.body || "");
+  /* xuhi: end of test code ***********************************/
 
   const inputs: Inputs = new Inputs();
   inputs.title = context.payload.pull_request.title;
@@ -65,7 +76,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     inputs.description = commenter.getDescription(context.payload.pull_request.body);
   }
 
-  // if the description contains ignore_keyword, skip
+  // if the description contains ignore_keyword, skip `"/reviewbot: ignore"`
   if (inputs.description.includes(ignoreKeyword)) {
     info("Skipped: description contains ignore_keyword");
     return;
@@ -75,6 +86,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   inputs.reviewFileDiff = options.reviewFileDiff;
 
   // get SUMMARIZE_TAG message
+  // 每次执行 review 时，都需要重新获取 SUMMARIZE_TAG 消息，并update，重新发布
   const existingSummarizeCmt = await commenter.findCommentWithTag(SUMMARIZE_TAG, context.payload.pull_request.number);
   let existingCommitIdsBlock = "";
   let existingSummarizeCmtBody = "";
@@ -141,13 +153,16 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   }
 
   // Filter out any file that is changed compared to the incremental changes
-  // 这一行代码的目的是过滤出仅在增量修改中（从 highestReviewedCommitId 到 PR 最新提交）存在的文件。通过 filter 方法，targetBranchFiles 中的文件会被过滤，只保留那些同时在 incrementalFiles 中出现的文件。这确保了我们只对增量修改的文件进行审查，而不是对整个 PR 的所有文件进行重复审查。
-  // filter() 是保留那些 targetBranchFiles 中的文件，前提是该文件的 filename 出现在 incrementalFiles 中。也就是说，只有在增量提交中也发生了更改的文件会被保留。
+  /*
+  这一行代码的目的是过滤出仅在增量修改中（从 highestReviewedCommitId 到 PR 最新提交）存在的文件。通过 filter 方法，targetBranchFiles 中的文件会被过滤，只保留那些同时在 incrementalFiles 中出现的文件。这确保了我们只对增量修改的文件进行审查，而不是对整个 PR 的所有文件进行重复审查。
+  filter() 是保留那些 targetBranchFiles 中的文件，前提是该文件的 filename 出现在 incrementalFiles 中。也就是说，只有在增量提交中也发生了更改的文件会被保留。
+  incrementalFiles 可能存在于增量差异中，但不出现在 targetBranchFiles 中，即incrementalFiles未必总是targetBranchFiles的子集（具体参考doc下的文章）。这就是为什么要执行下面几行代码的原因。
+  */
   const files = targetBranchFiles.filter((targetBranchFile) =>
     incrementalFiles.some((incrementalFile) => incrementalFile.filename === targetBranchFile.filename)
   );
 
-  // 调用示例
+  // 下面这个代码是用来检测是不是files===incrementalFiles，因为看上去前面的代码是多余的。结果确实显示结果是一样的。
   const isEqual = areFilesArrayEqual(files, incrementalFiles);
   info(`Comparison result: ${isEqual ? "Files are equal to incrementalFiles." : "Files are NOT equal to incrementalFiles."}`);
 
@@ -158,8 +173,10 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   }
 
   // skip files if they are filtered out (minimatched)
+  // files = filterSelectedFiles + filterIgnoredFiles
+  // filterIgnoredFiles 是通过 options.pathFilters.check() 方法过滤掉 excluded paths
   const filterSelectedFiles = [];
-  const filterIgnoredFiles = []; // 这是通过 options.pathFilters.check() 方法过滤掉 excluded paths
+  const filterIgnoredFiles = [];
   for (const file of files) {
     if (!options.checkPath(file.filename)) {
       info(`skip for excluded path: ${file.filename}`);
@@ -192,7 +209,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   const filteredFiles: Array<FilteredFile | null> = await Promise.all(
     filterSelectedFiles.map((file) =>
       githubConcurrencyLimit(async () => {
-        // retrieve file contents
+        // 1. retrieve file contents from Target (base) by using octokit.repos.getContent
         let fileContent = "";
         if (context.payload.pull_request == null) {
           warning("Skipped: context.payload.pull_request is null");
@@ -203,7 +220,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
             owner: repo.owner,
             repo: repo.repo,
             path: file.filename,
-            ref: context.payload.pull_request.base.sha,
+            ref: context.payload.pull_request.base.sha, // base is the initial commit of the PR, i.e., Target
           });
           if (contents.data != null) {
             if (!Array.isArray(contents.data)) {
@@ -217,17 +234,20 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
           warning(`Failed to get file contents: ${e as string}. This is OK if it's a new file.`);
         }
 
+        // 2. get diff from file.patch. No need to invoke extra API.
         let fileDiff = "";
         if (file.patch != null) {
           fileDiff = file.patch;
         }
-        // printWithColor("file.patch", file.patch);
+        printWithColor("file.patch", file.patch);
 
+        // 3. get hunks from file.patch
         const patches: Array<[number, number, string]> = [];
         for (const patch of splitPatch(file.patch)) {
-          // printWithColor("patch", patch);
+          printWithColor("patch", patch);
+          // 针对每个 hunk，获取其起始行和结束行号
           const patchLines = patchStartEndLine(patch); // patch ==> a hunk
-          // printWithColor("patchLines", patchLines);
+          printWithColor("patchLines", patchLines);
           if (patchLines == null) {
             continue;
           }
@@ -253,6 +273,7 @@ ${hunks.oldHunk}
           // printWithColor("patchLines.newHunk.startLine, patchLines.newHunk.endLine, hunksStr]", patches[patches.length - 1]);
         }
         if (patches.length > 0) {
+          // 返回的结果包含：文件名，旧文件的完整内容，文件差异部分，和Patches（就是包含各个hunk的array）
           console.log([file.filename, fileContent, fileDiff, patches]);
           return [file.filename, fileContent, fileDiff, patches] as [string, string, string, Array<[number, number, string]>];
         } else {
@@ -262,6 +283,7 @@ ${hunks.oldHunk}
     )
   );
 
+  /* xuhi: Debuging purpose, optional ****************************************/
   // Print the first 2 elements for debug purpose
   if (filteredFiles.length === 0) {
     printWithColor("filteredFiles is empty.");
@@ -271,6 +293,7 @@ ${hunks.oldHunk}
     printWithColor("The 1st element of filteredFiles:", filteredFiles[0]);
     printWithColor("The 2nd element of filteredFiles:", filteredFiles[1]);
   }
+  /* xuhi: End of Debuging purpose, optional *********************************/
 
   // Filter out any null results
   // const filesAndChanges = filteredFiles.filter((file) => file !== null) as Array<[string, string, string, Array<[number, number, string]>]>;
@@ -389,13 +412,38 @@ ${
     printWithColor("fileContent", fileContent);
     printWithColor("fileDiff", fileDiff);
     if (options.maxFiles <= 0 || summaryPromises.length < options.maxFiles) {
+      // 这行代码的主要作用是将一个异步总结操作添加到 summaryPromises 数组中，同时通过 bedrockConcurrencyLimit 函数来限制并发执行的数量。
       summaryPromises.push(bedrockConcurrencyLimit(async () => await doSummary(filename, fileContent, fileDiff)));
     } else {
       skippedFiles.push(filename);
     }
   }
+  /*
+  假设summaryPromises包含一下结果：
+      [
+        ["file1.js", "Summary of file1", true],
+        null,
+        ["file2.js", "Summary of file2", false],
+        null,
+        ["file3.js", "Summary of file3", true]
+      ]
 
+  */
+
+  // 这行代码的主要作用是等待所有的总结操作完成，并将成功的总结结果收集到 summaries 数组中，同时过滤掉那些返回 null 的结果（即总结失败或被跳过的文件）。
+  // 得到的结果是一个数组，包含每个 doSummary 调用的返回值（[string, string, boolean] 或 null）。
+  // 过滤掉数组中所有 null 值，只保留有效的总结结果。
+  printWithColor("summaryPromises", summaryPromises);
   const summaries = (await Promise.all(summaryPromises)).filter((summary) => summary !== null) as Array<[string, string, boolean]>;
+  printWithColor("summaries", summaries);
+  /*
+  经过过滤后，summaries 将变为：
+      [
+        ["file1.js", "Summary of file1", true],
+        ["file2.js", "Summary of file2", false],
+        ["file3.js", "Summary of file3", true]
+      ]
+  */
 
   if (summaries.length > 0) {
     const batchSize = 10;
@@ -408,12 +456,14 @@ ${
 ${filename}: ${summary}
 `;
       }
+      printWithColor("inputs.rawSummary", inputs.rawSummary);
       // ask Bedrock to summarize the summaries
       const [summarizeResp] = await heavyBot.chat(prompts.renderSummarizeChangesets(inputs));
       if (summarizeResp === "") {
         warning("summarize: nothing obtained from bedrock");
       } else {
         inputs.rawSummary = summarizeResp;
+        printWithColor("inputs.rawSummary=summarizeResp", inputs.rawSummary);
       }
     }
   }
@@ -423,6 +473,7 @@ ${filename}: ${summary}
   if (summarizeFinalResponse === "") {
     info("summarize: nothing obtained from bedrock");
   }
+  printWithColor("summarizeFinalResponse", summarizeFinalResponse);
 
   if (options.disableReleaseNotes === false) {
     // final release notes
@@ -430,6 +481,7 @@ ${filename}: ${summary}
     if (releaseNotesResponse === "") {
       info("release notes: nothing obtained from bedrock");
     } else {
+      printWithColor("releaseNotesResponse", releaseNotesResponse);
       let message = "### Summary (generated)\n\n";
       message += releaseNotesResponse;
       try {
@@ -443,6 +495,7 @@ ${filename}: ${summary}
   // generate a short summary as well
   const [summarizeShortResponse] = await heavyBot.chat(prompts.renderSummarizeShort(inputs));
   inputs.shortSummary = summarizeShortResponse;
+  printWithColor("summarizeShortResponse", inputs.shortSummary);
 
   let summarizeComment = `${summarizeFinalResponse}
 ${RAW_SUMMARY_START_TAG}
@@ -452,6 +505,7 @@ ${SHORT_SUMMARY_START_TAG}
 ${inputs.shortSummary}
 ${SHORT_SUMMARY_END_TAG}
 `;
+  printWithColor("==> summarizeComment", summarizeComment);
 
   statusMsg += `
 ${
@@ -479,18 +533,25 @@ ${
     : ""
 }
 `;
+  printWithColor("==> statusMsg", statusMsg);
 
   if (!options.disableReview) {
+    // 使用 filter 方法从 filesAndChanges 中筛选出需要审查的文件
+    // 通过查找 summaries 中与 filename 相匹配的条目并读取其第三项（[2]）来决定是否需要审查。如果没有找到匹配条目，默认认为需要审查（true）。
     const filesAndChangesReview = filesAndChanges.filter(([filename]) => {
       const needsReview = summaries.find(([summaryFilename]) => summaryFilename === filename)?.[2] ?? true;
       return needsReview;
     });
 
+    // 这段代码通过检查哪些文件没有包含在 filesAndChangesReview 中，从而生成被跳过审查的文件列表。
+    // 使用 filter 方法筛选出未包含在 filesAndChangesReview 中的文件，并返回这些文件的 filename。
     const reviewsSkipped = filesAndChanges
       .filter(([filename]) => !filesAndChangesReview.some(([reviewFilename]) => reviewFilename === filename))
       .map(([filename]) => filename);
 
     // failed reviews array
+    // reviewsFailed：用于存储审查失败的文件。
+    // lgtmCount 和 reviewCount 分别用于跟踪已通过审查的数量和总审查数。
     const reviewsFailed: string[] = [];
     let lgtmCount = 0;
     let reviewCount = 0;
@@ -668,7 +729,7 @@ ${
     // add existing_comment_ids_block with latest head sha
     summarizeComment += `\n${commenter.addReviewedCommitId(existingCommitIdsBlock, context.payload.pull_request.head.sha)}`;
 
-    // post the review
+    // post the review - createReview() at commit level
     await commenter.submitReview(context.payload.pull_request.number, commits[commits.length - 1].sha, statusMsg);
   }
 

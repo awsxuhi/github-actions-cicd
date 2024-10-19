@@ -1,8 +1,8 @@
-import {type Inputs} from './inputs'
+import { type Inputs } from "./inputs";
 
 export class Prompts {
-  summarize: string
-  summarizeReleaseNotes: string
+  summarize: string;
+  summarizeReleaseNotes: string;
 
   summarizeFileDiff = `
 I would like you to succinctly summarize the Pull Request within 100 words.
@@ -20,7 +20,7 @@ $description
 <pull_request_diff>
 $file_diff
 </pull_request_diff>
-`
+`;
   triageFileDiff = `Below the summary, I would also like you to triage the diff as \`NEEDS_REVIEW\` or \`APPROVED\` based on the following criteria:
 
 - If the diff involves any modifications to the logic or functionality, even if they seem minor, triage it as \`NEEDS_REVIEW\`. This includes changes to control structures, function calls, or variable assignments that might impact the behavior of the code.
@@ -33,10 +33,10 @@ You must strictly follow the format below for triaging the diff:
 [TRIAGE]: <NEEDS_REVIEW or APPROVED>
 
 Important:
-- In your summary do not mention that the file needs a through review or caution about potential issues.
+- In your summary do not mention that the file needs a thorough review or caution about potential issues.
 - Do not provide any reasoning why you triaged the diff as \`NEEDS_REVIEW\` or \`APPROVED\`.
 - Do not mention that these changes affect the logic or functionality of the code in the summary. You must only use the triage status format above to indicate that.
-`
+`;
   summarizeChangesets = `Provided below (<changeSet> tag) are changesets in this pull request.
 Changesets are in chronlogical order and new changesets are appended to the end of the list. The format consists of filename(s) and the summary 
 of changes for those files. There is a separator between each changeset.
@@ -45,14 +45,14 @@ Your task is to deduplicate and group together files with related/similar change
 <changeSet>
 $raw_summary
 </changeSet>
-`
+`;
 
   summarizePrefix = `Below <summary> tag is the summary of changes you have generated for files:
 <summary>
 $raw_summary
 </summary>
 
-`
+`;
 
   summarizeShort = `Your task is to provide a concise summary of the changes.
 This summary will be used as a prompt while reviewing each file and must be very clear for the AI bot to understand. 
@@ -64,7 +64,7 @@ Instructions:
 - Do not mention that files need a through review or caution about potential issues.
 - Do not mention that these changes affect the logic or functionality of the code.
 - The summary should not exceed 500 words.
-`
+`;
 
   reviewFileDiff = `
 $system_message
@@ -152,7 +152,7 @@ Please review this change.
 ## Changes made to \`$filename\` for your review
 
 $patches
-`
+`;
 
   comment = `
 $system_message
@@ -204,48 +204,45 @@ This is the comment/request that you need to directly reply to
 <comment>
 $comment
 </comment>
-`
+`;
 
-  constructor(summarize = '', summarizeReleaseNotes = '') {
-    this.summarize = summarize
-    this.summarizeReleaseNotes = summarizeReleaseNotes
+  constructor(summarize = "", summarizeReleaseNotes = "") {
+    this.summarize = summarize;
+    this.summarizeReleaseNotes = summarizeReleaseNotes;
   }
 
-  renderSummarizeFileDiff(
-    inputs: Inputs,
-    reviewSimpleChanges: boolean
-  ): string {
-    let prompt = this.summarizeFileDiff
+  renderSummarizeFileDiff(inputs: Inputs, reviewSimpleChanges: boolean): string {
+    let prompt = this.summarizeFileDiff;
     if (reviewSimpleChanges === false) {
-      prompt += this.triageFileDiff
+      prompt += this.triageFileDiff;
     }
-    return inputs.render(prompt)
+    return inputs.render(prompt);
   }
 
   renderSummarizeChangesets(inputs: Inputs): string {
-    return inputs.render(this.summarizeChangesets)
+    return inputs.render(this.summarizeChangesets);
   }
 
   renderSummarize(inputs: Inputs): string {
-    const prompt = this.summarizePrefix + this.summarize
-    return inputs.render(prompt)
+    const prompt = this.summarizePrefix + this.summarize;
+    return inputs.render(prompt);
   }
 
   renderSummarizeShort(inputs: Inputs): string {
-    const prompt = this.summarizePrefix + this.summarizeShort
-    return inputs.render(prompt)
+    const prompt = this.summarizePrefix + this.summarizeShort;
+    return inputs.render(prompt);
   }
 
   renderSummarizeReleaseNotes(inputs: Inputs): string {
-    const prompt = this.summarizePrefix + this.summarizeReleaseNotes
-    return inputs.render(prompt)
+    const prompt = this.summarizePrefix + this.summarizeReleaseNotes;
+    return inputs.render(prompt);
   }
 
   renderComment(inputs: Inputs): string {
-    return inputs.render(this.comment)
+    return inputs.render(this.comment);
   }
 
   renderReviewFileDiff(inputs: Inputs): string {
-    return inputs.render(this.reviewFileDiff)
+    return inputs.render(this.reviewFileDiff);
   }
 }
