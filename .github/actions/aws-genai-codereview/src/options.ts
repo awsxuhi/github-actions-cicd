@@ -96,9 +96,9 @@ export class Options {
   checkPath(path: string): boolean {
     const ok = this.pathFilters.check(path);
     if (ok) {
-      info(`checking path: ${path} => ${ok}, File change detected and will be reviewed.`);
+      info(`checking path: ${path} => ${ok}, changed, to review.`);
     } else {
-      info(`checking path: ${path} => ${ok}, File change ignored and will not be reviewed.`);
+      info(`checking path: ${path} => ${ok}, changed, skip.`);
     }
     return ok;
   }

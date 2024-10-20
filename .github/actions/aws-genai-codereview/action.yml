@@ -57,7 +57,7 @@ inputs:
     required: false
     description: "Max files to summarize and review. Less than or equal to 0 means no
       limit."
-    default: "150"
+    default: "100"
   only_allow_collaborator:
     required: false
     description: "Allow Bedrock access only for collaborators"

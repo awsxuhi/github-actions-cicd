@@ -9,11 +9,11 @@ export function areFilesArrayEqual(fileArray1: Array<{ filename: string }>, file
 
   for (let i = 0; i < filenames1.length; i++) {
     if (filenames1[i] !== filenames2[i]) {
-      console.info(`Files and incrementalFiles are not equal. Mismatch at filename: ${filenames1[i]} vs ${filenames2[i]}`);
+      console.info(`result from areFilesArrayEqual(): NOT equal. Mismatch at filename: ${filenames1[i]} vs ${filenames2[i]}`);
       return false;
     }
   }
 
-  console.info("Files and incrementalFiles are equal.");
+  console.info("result from areFilesArrayEqual(): equal.");
   return true;
 }
