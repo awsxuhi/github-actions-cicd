@@ -18,7 +18,8 @@ import { octokit } from "./octokit";
 import { type Options } from "./options";
 import { type Prompts } from "./prompts";
 import { getTokenCount } from "./tokenizer";
-import { printWithColor, getDiffBetweenCommits, debugPrintCommitSha, areFilesArrayEqual } from "@/utils";
+import { printWithColor, debugPrintCommitSha, areFilesArrayEqual } from "./utils";
+import { getPullRequestDescription, getDiffBetweenCommits } from "./lib";
 
 // eslint-disable-next-line camelcase
 const context = github_context;
@@ -26,7 +27,6 @@ const repo = context.repo;
 
 const ignoreKeyword = "/reviewbot: ignore";
 
-/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options, prompts: Prompts): Promise<void> => {
   const commenter: Commenter = new Commenter();
 
@@ -38,37 +38,16 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     return;
   }
 
-  // 虽然 pull_request 和 pull_request_target 是不同的事件类型，但它们的结构相同，GitHub 会在 context.payload.pull_request 中存储拉取请求的数据。因此，context.payload.pull_request 适用于两种事件类型。
+  /*
+   虽然 pull_request 和 pull_request_target 是不同的事件类型，但它们的结构相同，GitHub 会在 context.payload.pull_request 中存储拉取请求的数据。因此，context.payload.pull_request 适用于两种事件类型。这里用于检查是否有新的变更需要审查。
+  */
   if (context.payload.pull_request == null) {
     warning("Skipped: context.payload.pull_request is null");
     return;
   }
 
-  /* xuhi: test code ******************************************/
-  // octokit.pulls.get 返回的是这个特定 Pull Request 的所有相关详细信息。
-  /*
-    调用 pulls.get 时，会根据传入的 owner、repo 和 pull_number 获取指定的 Pull Request 的数据。
-
-  返回的数据通常包括以下信息（在 pr.data 中）：
-
-  id：Pull Request 的 ID。
-  number：Pull Request 的编号。
-  title：Pull Request 的标题。
-  body：Pull Request 的描述内容（在 pr.data.body 中）。
-  state：Pull Request 的状态（如 open、closed 等）。
-  user：创建该 Pull Request 的用户信息。
-  created_at：创建时间。
-  commits：该 Pull Request 中的提交数。
-  changed_files：更改文件的数量。
-  还有其他许多属性
-  */
-  const pr = await octokit.pulls.get({
-    owner: repo.owner,
-    repo: repo.repo,
-    pull_number: context.payload.pull_request.number,
-  });
-  printWithColor("body = pr.data.body", pr.data.body || "");
-  /* xuhi: end of test code ***********************************/
+  const pullRequestDescription = await getPullRequestDescription();
+  printWithColor("getPullRequestDescription()", pullRequestDescription);
 
   const inputs: Inputs = new Inputs();
   inputs.title = context.payload.pull_request.title;
