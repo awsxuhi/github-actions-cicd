@@ -19,7 +19,7 @@ import { type Options } from "./options";
 import { type Prompts } from "./prompts";
 import { getTokenCount } from "./tokenizer";
 import { printWithColor, debugPrintCommitSha, areFilesArrayEqual } from "./utils";
-import { getPullRequestDescription, getDiffBetweenCommits } from "./lib";
+import { getPullRequestDescription, updateInputsWithExistingSummary, getTheHighestReviewedCommitId, getDiffBetweenCommits } from "./lib";
 
 const context = github_context;
 const repo = context.repo;
@@ -58,7 +58,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   inputs.title = context.payload.pull_request.title;
   if (context.payload.pull_request.body != null) {
     /*
-    NOTE: The commenter.getDescription(context.payload.pull_request.body) method retrieves content based on the pullRequestDescription, specifically extracting the bot-generated portion marked by a TAG. This is important because the pullRequestDescription may also contain manually added descriptions by users.
+    Worth Noting: The commenter.getDescription(context.payload.pull_request.body) method extracts the bot-generated portion from the pullRequestDescription based on a TAG and removes this bot-generated content, leaving only the manually entered parts. This allows for the subsequent addition of new bot-generated content, which can then be combined to create an updated Description.
     */
     inputs.description = commenter.getDescription(context.payload.pull_request.body);
     printWithColor("inputs.description", inputs.description);
@@ -73,40 +73,54 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   inputs.systemMessage = options.systemMessage;
   inputs.reviewFileDiff = options.reviewFileDiff;
 
+  /*
+  By searching through all comments, we identify the comment that contains the SUMMARIZE_TAG (i.e., "<!-- This is an auto-generated comment: summarize by AI reviewer -->"). This comment is referred to as `existingSummarizeCmt`. Each time a code review is executed, the SUMMARIZE_TAG message needs to be retrieved, updated, and then re-published.
+  */
   // get SUMMARIZE_TAG message
-  // 每次执行 review 时，都需要重新获取 SUMMARIZE_TAG 消息，并update，重新发布
-  const existingSummarizeCmt = await commenter.findCommentWithTag(SUMMARIZE_TAG, context.payload.pull_request.number);
-  let existingCommitIdsBlock = "";
-  let existingSummarizeCmtBody = "";
-  if (existingSummarizeCmt != null) {
-    existingSummarizeCmtBody = existingSummarizeCmt.body;
-    printWithColor("existingSummarizeCmtBody = existingSummarizeCmt.body (like allComments[0].body)", existingSummarizeCmtBody);
-    inputs.rawSummary = commenter.getRawSummary(existingSummarizeCmtBody);
-    inputs.shortSummary = commenter.getShortSummary(existingSummarizeCmtBody);
-    existingCommitIdsBlock = commenter.getReviewedCommitIdsBlock(existingSummarizeCmtBody);
-  }
+  const { existingSummarizeCmtBody, existingCommitIdsBlock } = await updateInputsWithExistingSummary(commenter, inputs, context.payload.pull_request.number);
 
-  const allCommitIds = await commenter.getAllCommitIds();
-  printWithColor("allCommitIds", allCommitIds);
-  // find highest reviewed commit id
-  let highestReviewedCommitId = "";
-  if (existingCommitIdsBlock !== "") {
-    highestReviewedCommitId = commenter.getHighestReviewedCommitId(allCommitIds, commenter.getReviewedCommitIds(existingCommitIdsBlock));
-  }
+  const highestReviewedCommitId = await getTheHighestReviewedCommitId(
+    commenter,
+    existingCommitIdsBlock,
+    context.payload.pull_request.base.sha,
+    context.payload.pull_request.head.sha
+  );
 
-  /************************************************************************************************
-  条件 highestReviewedCommitId === context.payload.pull_request.head.sha 的情况实际上是非常少见的，通常只会出现在以下特殊情况之一：
+  // const existingSummarizeCmt = await commenter.findCommentWithTag(SUMMARIZE_TAG, context.payload.pull_request.number);
+  // let existingCommitIdsBlock = "";
+  // let existingSummarizeCmtBody = "";
+  // if (existingSummarizeCmt != null) {
+  //   existingSummarizeCmtBody = existingSummarizeCmt.body;
+  //   printWithColor(
+  //     "existingSummarizeCmtBody = existingSummarizeCmt.body (like allComments[0].body, but it's the comment having SUMMARIZE_TAG)",
+  //     existingSummarizeCmtBody
+  //   );
+  //   inputs.rawSummary = commenter.getRawSummary(existingSummarizeCmtBody);
+  //   inputs.shortSummary = commenter.getShortSummary(existingSummarizeCmtBody);
+  //   existingCommitIdsBlock = commenter.getReviewedCommitIdsBlock(existingSummarizeCmtBody);
+  // }
 
-  当前最新 commit 已经被审查过：这种情况会发生在 上一次审查的 commit 刚好就是最新的 head commit 时。例如，如果上次审查记录的 commit 就是当前 PR 的最新 commit，那么 highestReviewedCommitId 和 head.sha 会相等。这种情况下，意味着没有新的变更需要审查，因为最新的提交已经审查过了。
+  // const allCommitIds = await commenter.getAllCommitIds();
+  // printWithColor("allCommitIds", allCommitIds);
+  // // find the highest reviewed commit id
+  // let highestReviewedCommitId = "";
+  // if (existingCommitIdsBlock !== "") {
+  //   highestReviewedCommitId = commenter.getHighestReviewedCommitId(allCommitIds, commenter.getReviewedCommitIds(existingCommitIdsBlock));
+  // }
 
-  所有 commit 已被逐一审查完：如果团队每次推送新的 commit 后都会立即审查，那么最后一次审查记录会跟 head commit 保持一致。这种情况也会触发 highestReviewedCommitId === context.payload.pull_request.head.sha 条件，表示 PR 中所有代码都已经被审查，当前没有待审查的新增代码。
-   ***********************************************************************************************/
-  if (highestReviewedCommitId === "" || highestReviewedCommitId === context.payload.pull_request.head.sha) {
-    info(`Will review from the base commit: ${context.payload.pull_request.base.sha as string}`);
-    highestReviewedCommitId = context.payload.pull_request.base.sha;
-  } else {
-    info(`Will review from commit: ${highestReviewedCommitId}`);
-  }
+  // /************************************************************************************************
+  // 条件 highestReviewedCommitId === context.payload.pull_request.head.sha 的情况实际上是非常少见的，通常只会出现在以下特殊情况之一：
+
+  // 当前最新 commit 已经被审查过：这种情况会发生在 上一次审查的 commit 刚好就是最新的 head commit 时。例如，如果上次审查记录的 commit 就是当前 PR 的最新 commit，那么 highestReviewedCommitId 和 head.sha 会相等。这种情况下，意味着没有新的变更需要审查，因为最新的提交已经审查过了。
+
+  // 所有 commit 已被逐一审查完：如果团队每次推送新的 commit 后都会立即审查，那么最后一次审查记录会跟 head commit 保持一致。这种情况也会触发 highestReviewedCommitId === context.payload.pull_request.head.sha 条件，表示 PR 中所有代码都已经被审查，当前没有待审查的新增代码。
+  //  ***********************************************************************************************/
+  // if (highestReviewedCommitId === "" || highestReviewedCommitId === context.payload.pull_request.head.sha) {
+  //   info(`Will review from the base commit: ${context.payload.pull_request.base.sha as string}`);
+  //   highestReviewedCommitId = context.payload.pull_request.base.sha;
+  // } else {
+  //   info(`Will review from commit: ${highestReviewedCommitId}`);
+  // }
 
   /************************************************************************************************
   这段代码通过 GitHub API 的 compareCommits 方法，分别获取两个 diff（差异）：
