@@ -1,9 +1,6 @@
-// ./lib/filterFilesForReview.ts
-import { info, warning } from "@actions/core";
-import { components } from "@octokit/openapi-types";
+import { info } from "@actions/core";
 import { Options } from "../options";
-
-type FileDiff = components["schemas"]["diff-entry"];
+import { type FileDiff } from "../lib";
 
 /**
  * Filters files based on exclusion rules and returns selected and ignored files.

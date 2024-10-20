@@ -1,10 +1,7 @@
-import { components } from "@octokit/openapi-types";
 import { info, warning } from "@actions/core";
 import { printWithColor, areFilesArrayEqual } from "../utils";
 import { getDiffBetweenCommits } from "../lib";
-
-type FileDiff = components["schemas"]["diff-entry"];
-type Commit = components["schemas"]["commit"];
+import { type FileDiff, type Commit } from "../lib";
 
 /**
  * Fetches the diff between commits and filters the files that require a code review, along with the commits between the highest reviewed commit and the latest commit.
@@ -58,3 +55,9 @@ export async function getFilesForReviewAfterTheHighestReviewedCommitId(
 
   return { files, commits };
 }
+
+/************************************************************************************************
+  这段代码通过 GitHub API 的 compareCommits 方法，分别获取两个 diff（差异）：
+  1. incrementalDiff：从 highestReviewedCommitId（上次审查的最后一次提交，这是已经审查过的）到 PR 最新提交（context.payload.pull_request.head.sha）的增量差异。
+  2. targetBranchDiff：从目标分支的基准提交（context.payload.pull_request.base.sha）到 PR 最新提交的完整差异。
+   ***********************************************************************************************/
