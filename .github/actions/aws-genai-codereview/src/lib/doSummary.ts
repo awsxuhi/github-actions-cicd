@@ -16,7 +16,7 @@ export async function doSummary(
   lightBot: Bot,
   summariesFailed: string[]
 ): Promise<[string, string, boolean] | null> {
-  info(`summarize: ${filename}`);
+  info(`Start summarizing: ${filename}`);
   const ins = inputs.clone();
 
   if (fileDiff.length === 0) {

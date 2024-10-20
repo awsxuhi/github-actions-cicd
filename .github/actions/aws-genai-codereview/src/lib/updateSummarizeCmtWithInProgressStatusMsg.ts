@@ -12,7 +12,7 @@ import { context as github_context } from "@actions/github";
 export async function updateSummarizeCmtWithInProgressStatusMsg(existingSummarizeCmtBody: string, statusMsg: string, commenter: Commenter): Promise<void> {
   const context = github_context;
 
-  printWithColor("existingSummarizeCmtBody", existingSummarizeCmtBody);
+  // printWithColor("existingSummarizeCmtBody", existingSummarizeCmtBody);
   const inProgressSummarizeCmt = commenter.addInProgressStatus(existingSummarizeCmtBody, statusMsg);
   printWithColor("[Important] inProgressSummarizeCmt = statusMsg + existingSummarizeCmtBody)", inProgressSummarizeCmt);
 
