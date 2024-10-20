@@ -19,9 +19,7 @@ export function generateStatusMsg(
   // construct the status message
   return `<details>
 <summary>Commits</summary>
-Files that changed from the base of the PR and between ${highestReviewedCommitId} and ${
-    context.payload.pull_request?.head.sha
-  } commits. (Focusing on incremental changes)
+Files that changed from the base of the PR and between ${highestReviewedCommitId} and ${context.payload.pull_request?.head.sha} commits. 
 </details>
 ${
   filesAndChanges.length > 0

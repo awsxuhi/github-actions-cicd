@@ -42,7 +42,6 @@ export async function doSummary(
   try {
     const [summarizeResp] = await lightBot.chat(summarizePrompt);
     printWithColor("summarizePrompt", summarizePrompt);
-    printWithColor("summarizeResp", summarizeResp);
 
     if (summarizeResp === "") {
       info("summarize: nothing obtained from bedrock");
@@ -61,6 +60,8 @@ export async function doSummary(
           const needsReview = triage === "NEEDS_REVIEW";
 
           // remove this line from the comment
+          printWithColor("summarizeResp before triageMatch being removed", summarizeResp);
+
           const summary = summarizeResp.replace(triageRegex, "").trim();
           printWithColor("summary (triage removed)", summary);
           info(`filename: ${filename}, triage: ${triage}`);
