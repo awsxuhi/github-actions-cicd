@@ -1,6 +1,7 @@
 import { info } from "@actions/core";
 import { Options } from "../options";
 import { type FileDiff } from "../lib";
+import { printWithColor } from "@/utils";
 
 /**
  * Filters files based on exclusion rules and returns selected and ignored files.
@@ -13,9 +14,11 @@ export function filterFilesForReview(files: FileDiff[], options: Options): { fil
   const filterSelectedFiles: FileDiff[] = [];
   const filterIgnoredFiles: FileDiff[] = [];
 
+  info(`\n`);
+  printWithColor("Filters files based on exclusion rules and returns selected and ignored files.");
   for (const file of files) {
     if (!options.checkPath(file.filename)) {
-      info(`skip for excluded path: ${file.filename}`);
+      info(`+++ skip for excluded path: ${file.filename} +++`);
       filterIgnoredFiles.push(file);
     } else {
       filterSelectedFiles.push(file);

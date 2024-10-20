@@ -22,11 +22,11 @@ export async function getFilesForReviewAfterTheHighestReviewedCommitId(
 ): Promise<{ files: FileDiff[]; commits: Commit[] }> {
   // Fetch the diff between the highest REVIEWED commit and the latest commit of the PR branch
   const incrementalDiff = await getDiffBetweenCommits(repoOwner, repoName, highestReviewedCommitId, pullRequestHeadSha);
-  printWithColor("Incremental diff since last review (incrementalDiff.data.files):", incrementalDiff.data.files?.slice(0, 3));
+  printWithColor("incremental-diff vs. the_last_reviewed_commit_id:", incrementalDiff.data.files?.slice(0, 3));
 
   // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
   const targetBranchDiff = await getDiffBetweenCommits(repoOwner, repoName, pullRequestBaseSha, pullRequestHeadSha);
-  printWithColor("Target branch base diff (targetBranchDiff.data.files):", targetBranchDiff.data.files?.slice(0, 3));
+  printWithColor("full-diff vs. target.base:", targetBranchDiff.data.files?.slice(0, 3));
 
   // Define GitHub file diff type
   const incrementalFiles: FileDiff[] = incrementalDiff.data.files || [];
@@ -45,7 +45,13 @@ export async function getFilesForReviewAfterTheHighestReviewedCommitId(
 
   // Check if files are equal to incrementalFiles for debugging purposes ONLY, below 2 lines can be removed later
   const isEqual = areFilesArrayEqual(files, incrementalFiles);
-  info(`Comparison result: ${isEqual ? "Files are equal to incrementalFiles." : "Files are NOT equal to incrementalFiles."}`);
+  info(
+    `Comparison result: ${
+      isEqual
+        ? "Files filtered from TargetBranchFiles are equal to incrementalFiles."
+        : "Files filtered from TargetBranchFiles are NOT equal to incrementalFiles."
+    }`
+  );
 
   // If no new files to review
   if (files.length === 0) {

@@ -1,7 +1,7 @@
 import { context as github_context } from "@actions/github";
 import { warning } from "@actions/core";
 import pLimit from "p-limit";
-import { type FilteredFile } from "../lib";
+import type { FilteredFile, FilesResultFromCompareCommits } from "../lib";
 import { octokit } from "../octokit";
 import { type Options } from "../options";
 // import { printWithColor } from "../utils";
@@ -14,22 +14,7 @@ import { type Options } from "../options";
  * @param context - The GitHub context containing pull request information.
  * @returns A filtered array of files with their changes.
  */
-export async function getFilesWithHunksArray(
-  filterSelectedFiles: Array<{
-    sha: string;
-    filename: string;
-    status: "added" | "removed" | "modified" | "renamed" | "copied" | "changed" | "unchanged";
-    additions: number;
-    deletions: number;
-    changes: number;
-    blob_url: string;
-    raw_url: string;
-    contents_url: string;
-    patch?: string | null | undefined;
-    previous_filename?: string | undefined;
-  }>,
-  options: Options
-): Promise<FilteredFile[]> {
+export async function getFilesWithHunksArray(filterSelectedFiles: Array<FilesResultFromCompareCommits>, options: Options): Promise<FilteredFile[]> {
   const githubConcurrencyLimit = pLimit(options.githubConcurrencyLimit);
   const context = github_context;
   /* githubConcurrencyLimit(async () => {...}) 的用法意味着每次调用这个函数时，最多只会有 options.githubConcurrencyLimit 个异步任务同时执行。多余的任务将排队等待。这种机制常用于防止超过 API 请求限制，避免引发 429 "Too Many Requests" 错误。

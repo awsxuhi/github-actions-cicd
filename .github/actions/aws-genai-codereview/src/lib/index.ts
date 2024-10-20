@@ -5,4 +5,7 @@ export { getTheHighestReviewedCommitId } from "./getTheHighestReviewedCommitId";
 export { getFilesForReviewAfterTheHighestReviewedCommitId } from "./getFilesForReviewAfterTheHighestReviewedCommitId";
 export { filterFilesForReview } from "./filterFilesForReview";
 export { getFilesWithHunksArray } from "./getFilesWithHunksArray";
-export type { FileDiff, Commit, FilteredFile, Review } from "./typeAndInterface";
+export { updateSummarizeCmtWithInProgressStatusMsg } from "./updateSummarizeCmtWithInProgressStatusMsg";
+export { generateStatusMsg } from "./generateStatusMsg";
+export { doSummary } from "./doSummary";
+export type { FileDiff, Commit, FilteredFile, Review, FilesResultFromCompareCommits } from "./typeAndInterface";

@@ -54,7 +54,7 @@ export class Commenter {
       warning("Skipped: context.payload.pull_request and context.payload.issue are both null");
       return;
     }
-    printWithColor("target (Pull request number OR Issue number", target);
+    printWithColor("target (Pull request number OR Issue number)", target);
 
     if (!tag) {
       tag = COMMENT_TAG;
@@ -611,7 +611,6 @@ ${chain}
     try {
       const cmt = await this.findCommentWithTag(tag, target);
       if (cmt) {
-        printWithColor("cmt", cmt);
         await octokit.issues.updateComment({
           owner: repo.owner,
           repo: repo.repo,

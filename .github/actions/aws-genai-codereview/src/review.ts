@@ -28,6 +28,9 @@ import {
   getFilesForReviewAfterTheHighestReviewedCommitId,
   filterFilesForReview,
   getFilesWithHunksArray,
+  updateSummarizeCmtWithInProgressStatusMsg,
+  generateStatusMsg,
+  doSummary,
 } from "./lib";
 
 const context = github_context;
@@ -39,7 +42,6 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   const commenter: Commenter = new Commenter();
 
   const bedrockConcurrencyLimit = pLimit(options.bedrockConcurrencyLimit);
-  const githubConcurrencyLimit = pLimit(options.githubConcurrencyLimit);
 
   if (context.eventName !== "pull_request" && context.eventName !== "pull_request_target") {
     warning(`Skipped: current event is ${context.eventName}, only support pull_request event`);
@@ -99,7 +101,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     context.payload.pull_request.base.sha,
     context.payload.pull_request.head.sha
   );
-  printWithColor("inputs", inputs);
+  printWithColor("inputs", inputs, 2);
 
   await debugPrintCommitSha(
     context.payload.pull_request.base.sha,
@@ -149,8 +151,8 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   ********************************************************************************************************************/
   const filesAndChanges = await getFilesWithHunksArray(filterSelectedFiles, options);
 
-  /* xuhi: Debuging purpose, optional ****************************************/
-  // Print the first 2 elements for debug purpose
+  // Print the first 2 elements for debug purpose ONLY, you can remove below lines
+  // filesAndChanges: [filename, fileContent, fileDiff, patches: array<[number, number, string]>] []
   if (filesAndChanges.length === 0) {
     printWithColor("Skipped: no files to review.");
     return;
@@ -160,133 +162,32 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     printWithColor("The 1st element of filteredFiles:", filesAndChanges[0]);
     printWithColor("The 2nd element of filteredFiles:", filesAndChanges[1]);
   }
-  /* xuhi: End of Debuging purpose, optional *********************************/
 
-  let statusMsg = `<details>
-<summary>Commits</summary>
-Files that changed from the base of the PR and between ${highestReviewedCommitId} and ${
-    context.payload.pull_request.head.sha
-  } commits. (Focusing on incremental changes)
-</details>
-${
-  filesAndChanges.length > 0
-    ? `
-<details>
-<summary>Files selected (${filesAndChanges.length})</summary>
+  /********************************************************************************************************************
+  5. Update the in progress statsMsg to the beginning of the summarize comment (usually the first comment after the PR description).
+  ********************************************************************************************************************/
 
-* ${filesAndChanges.map(([filename, , , patches]) => `${filename} (${patches.length})`).join("\n* ")}
-</details>
-`
-    : ""
-}
-${
-  filterIgnoredFiles.length > 0
-    ? `
-<details>
-<summary>Files ignored due to filter (${filterIgnoredFiles.length})</summary>
+  let statusMsg = generateStatusMsg(highestReviewedCommitId, filesAndChanges, filterIgnoredFiles);
+  await updateSummarizeCmtWithInProgressStatusMsg(existingSummarizeCmtBody, statusMsg, commenter);
 
-* ${filterIgnoredFiles.map((file) => file.filename).join("\n* ")}
-
-</details>
-`
-    : ""
-}
-`;
-
-  // update the existing comment with in progress status
-  printWithColor("existingSummarizeCmtBody", existingSummarizeCmtBody);
-  const inProgressSummarizeCmt = commenter.addInProgressStatus(existingSummarizeCmtBody, statusMsg);
-  printWithColor("inProgressSummarizeCmt = commenter.addInProgressStatus(existingSummarizeCmtBody, statusMsg)", inProgressSummarizeCmt);
-
-  // add in progress status to the summarize comment
-  await commenter.comment(`${inProgressSummarizeCmt}`, SUMMARIZE_TAG, "replace");
+  /********************************************************************************************************************
+  6. 
+  ********************************************************************************************************************/
 
   const summariesFailed: string[] = [];
-
-  // doSummary 是一个异步函数，用于对文件差异（fileDiff）进行总结，判断文件是否需要进一步的审查，并返回总结的结果。如果出现问题或某些条件不满足，会提前返回 null。
-  const doSummary = async (filename: string, fileContent: string, fileDiff: string): Promise<[string, string, boolean] | null> => {
-    info(`summarize: ${filename}`);
-    const ins = inputs.clone();
-    if (fileDiff.length === 0) {
-      warning(`summarize: file_diff is empty, skip ${filename}`);
-      summariesFailed.push(`${filename} (empty diff)`);
-      return null;
-    }
-
-    ins.filename = filename;
-    ins.fileDiff = fileDiff;
-
-    // render prompt based on inputs so far
-    const summarizePrompt = prompts.renderSummarizeFileDiff(ins, options.reviewSimpleChanges);
-    const tokens = getTokenCount(summarizePrompt);
-
-    if (tokens > options.lightTokenLimits.requestTokens) {
-      info(`summarize: diff tokens exceeds limit, skip ${filename}`);
-      summariesFailed.push(`${filename} (diff tokens exceeds limit)`);
-      return null;
-    }
-
-    // summarize content
-    try {
-      const [summarizeResp] = await lightBot.chat(summarizePrompt);
-      printWithColor("summarizeResp", summarizeResp);
-
-      if (summarizeResp === "") {
-        info("summarize: nothing obtained from bedrock");
-        summariesFailed.push(`${filename} (nothing obtained from bedrock)`);
-        return null;
-      } else {
-        if (options.reviewSimpleChanges === false) {
-          // parse the comment to look for triage classification
-          // Format is : [TRIAGE]: <NEEDS_REVIEW or APPROVED>
-          // if the change needs review return true, else false
-          const triageRegex = /\[TRIAGE\]:\s*(NEEDS_REVIEW|APPROVED)/;
-          const triageMatch = summarizeResp.match(triageRegex);
-
-          if (triageMatch != null) {
-            const triage = triageMatch[1];
-            const needsReview = triage === "NEEDS_REVIEW";
-
-            // remove this line from the comment
-            const summary = summarizeResp.replace(triageRegex, "").trim();
-            printWithColor("summary (triage removed)", summary);
-            info(`filename: ${filename}, triage: ${triage}`);
-            return [filename, summary, needsReview];
-          }
-        }
-        return [filename, summarizeResp, true];
-      }
-    } catch (e: any) {
-      warning(`summarize: error from bedrock: ${e as string}`);
-      summariesFailed.push(`${filename} (error from bedrock: ${e as string})})`);
-      return null;
-    }
-  };
 
   const summaryPromises = [];
   const skippedFiles = [];
   for (const [filename, fileContent, fileDiff] of filesAndChanges) {
-    printWithColor("filename", filename);
-    printWithColor("fileContent", fileContent);
-    printWithColor("fileDiff", fileDiff);
     if (options.maxFiles <= 0 || summaryPromises.length < options.maxFiles) {
       // 这行代码的主要作用是将一个异步总结操作添加到 summaryPromises 数组中，同时通过 bedrockConcurrencyLimit 函数来限制并发执行的数量。
-      summaryPromises.push(bedrockConcurrencyLimit(async () => await doSummary(filename, fileContent, fileDiff)));
+      summaryPromises.push(
+        bedrockConcurrencyLimit(async () => await doSummary(filename, fileContent, fileDiff, inputs, prompts, options, lightBot, summariesFailed))
+      );
     } else {
       skippedFiles.push(filename);
     }
   }
-  /*
-  假设summaryPromises包含一下结果：
-      [
-        ["file1.js", "Summary of file1", true],
-        null,
-        ["file2.js", "Summary of file2", false],
-        null,
-        ["file3.js", "Summary of file3", true]
-      ]
-
-  */
 
   // 这行代码的主要作用是等待所有的总结操作完成，并将成功的总结结果收集到 summaries 数组中，同时过滤掉那些返回 null 的结果（即总结失败或被跳过的文件）。
   // 得到的结果是一个数组，包含每个 doSummary 调用的返回值（[string, string, boolean] 或 null）。
