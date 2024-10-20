@@ -19,7 +19,14 @@ import { type Options } from "./options";
 import { type Prompts } from "./prompts";
 import { getTokenCount } from "./tokenizer";
 import { printWithColor, debugPrintCommitSha, areFilesArrayEqual } from "./utils";
-import { getPullRequestDescription, updateInputsWithExistingSummary, getTheHighestReviewedCommitId, getDiffBetweenCommits } from "./lib";
+import {
+  getPullRequestDescription,
+  updateInputsWithExistingSummary,
+  getTheHighestReviewedCommitId,
+  getDiffBetweenCommits,
+  getFilesForReviewAfterTheHighestReviewedCommitId,
+  filterFilesForReview,
+} from "./lib";
 
 const context = github_context;
 const repo = context.repo;
@@ -85,6 +92,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     context.payload.pull_request.base.sha,
     context.payload.pull_request.head.sha
   );
+  printWithColor("inputs", inputs);
 
   // const existingSummarizeCmt = await commenter.findCommentWithTag(SUMMARIZE_TAG, context.payload.pull_request.number);
   // let existingCommitIdsBlock = "";
@@ -136,37 +144,45 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     context.payload.after
   );
 
-  // Fetch the diff between the highest REVIEWED commit and the latest commit of the PR branch
-  const incrementalDiff = await getDiffBetweenCommits(repo.owner, repo.repo, highestReviewedCommitId, context.payload.pull_request.head.sha);
-  printWithColor("Incremental diff since last review (incrementalDiff.data.files):", incrementalDiff.data.files?.slice(0, 3));
-
-  // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
-  const targetBranchDiff = await getDiffBetweenCommits(repo.owner, repo.repo, context.payload.pull_request.base.sha, context.payload.pull_request.head.sha);
-  printWithColor("Target branch base diff (targetBranchDiff.data.files):", targetBranchDiff.data.files?.slice(0, 3));
-
-  // 定义 GitHub 文件差异的类型
-  type FileDiff = components["schemas"]["diff-entry"];
-  const incrementalFiles: FileDiff[] = incrementalDiff.data.files || [];
-  const targetBranchFiles: FileDiff[] = targetBranchDiff.data.files || [];
-
-  if (incrementalFiles == null || targetBranchFiles == null) {
-    warning("Skipped: files data is missing");
-    return;
-  }
-
-  // Filter out any file that is changed compared to the incremental changes
-  /*
-  这一行代码的目的是过滤出仅在增量修改中（从 highestReviewedCommitId 到 PR 最新提交）存在的文件。通过 filter 方法，targetBranchFiles 中的文件会被过滤，只保留那些同时在 incrementalFiles 中出现的文件。这确保了我们只对增量修改的文件进行审查，而不是对整个 PR 的所有文件进行重复审查。
-  filter() 是保留那些 targetBranchFiles 中的文件，前提是该文件的 filename 出现在 incrementalFiles 中。也就是说，只有在增量提交中也发生了更改的文件会被保留。
-  incrementalFiles 可能存在于增量差异中，但不出现在 targetBranchFiles 中，即incrementalFiles未必总是targetBranchFiles的子集（具体参考doc下的文章）。这就是为什么要执行下面几行代码的原因。
-  */
-  const files = targetBranchFiles.filter((targetBranchFile) =>
-    incrementalFiles.some((incrementalFile) => incrementalFile.filename === targetBranchFile.filename)
+  const { files, commits } = await getFilesForReviewAfterTheHighestReviewedCommitId(
+    repo.owner,
+    repo.repo,
+    highestReviewedCommitId,
+    context.payload.pull_request.base.sha,
+    context.payload.pull_request.head.sha
   );
 
-  // 下面这个代码是用来检测是不是files===incrementalFiles，因为看上去前面的代码是多余的。结果确实显示结果是一样的。
-  const isEqual = areFilesArrayEqual(files, incrementalFiles);
-  info(`Comparison result: ${isEqual ? "Files are equal to incrementalFiles." : "Files are NOT equal to incrementalFiles."}`);
+  // // Fetch the diff between the highest REVIEWED commit and the latest commit of the PR branch
+  // const incrementalDiff = await getDiffBetweenCommits(repo.owner, repo.repo, highestReviewedCommitId, context.payload.pull_request.head.sha);
+  // printWithColor("Incremental diff since last review (incrementalDiff.data.files):", incrementalDiff.data.files?.slice(0, 3));
+
+  // // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
+  // const targetBranchDiff = await getDiffBetweenCommits(repo.owner, repo.repo, context.payload.pull_request.base.sha, context.payload.pull_request.head.sha);
+  // printWithColor("Target branch base diff (targetBranchDiff.data.files):", targetBranchDiff.data.files?.slice(0, 3));
+
+  // 定义 GitHub 文件差异的类型
+  // type FileDiff = components["schemas"]["diff-entry"];
+  // const incrementalFiles: FileDiff[] = incrementalDiff.data.files || [];
+  // const targetBranchFiles: FileDiff[] = targetBranchDiff.data.files || [];
+
+  // if (incrementalFiles == null || targetBranchFiles == null) {
+  //   warning("Skipped: files data is missing");
+  //   return;
+  // }
+
+  // // Filter out any file that is changed compared to the incremental changes
+  // /*
+  // 这一行代码的目的是过滤出仅在增量修改中（从 highestReviewedCommitId 到 PR 最新提交）存在的文件。通过 filter 方法，targetBranchFiles 中的文件会被过滤，只保留那些同时在 incrementalFiles 中出现的文件。这确保了我们只对增量修改的文件进行审查，而不是对整个 PR 的所有文件进行重复审查。
+  // filter() 是保留那些 targetBranchFiles 中的文件，前提是该文件的 filename 出现在 incrementalFiles 中。也就是说，只有在增量提交中也发生了更改的文件会被保留。
+  // incrementalFiles 可能存在于增量差异中，但不出现在 targetBranchFiles 中，即incrementalFiles未必总是targetBranchFiles的子集（具体参考doc下的文章）。这就是为什么要执行下面几行代码的原因。
+  // */
+  // const files = targetBranchFiles.filter((targetBranchFile) =>
+  //   incrementalFiles.some((incrementalFile) => incrementalFile.filename === targetBranchFile.filename)
+  // );
+
+  // // 下面这个代码是用来检测是不是files===incrementalFiles，因为看上去前面的代码是多余的。结果确实显示结果是一样的。
+  // const isEqual = areFilesArrayEqual(files, incrementalFiles);
+  // info(`Comparison result: ${isEqual ? "Files are equal to incrementalFiles." : "Files are NOT equal to incrementalFiles."}`);
 
   // 如果 files.length === 0，说明从上次审查的提交到最新提交之间没有任何文件发生过变化
   if (files.length === 0) {
@@ -174,32 +190,39 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     return;
   }
 
-  // skip files if they are filtered out (minimatched)
-  // files = filterSelectedFiles + filterIgnoredFiles
-  // filterIgnoredFiles 是通过 options.pathFilters.check() 方法过滤掉 excluded paths
-  const filterSelectedFiles = [];
-  const filterIgnoredFiles = [];
-  for (const file of files) {
-    if (!options.checkPath(file.filename)) {
-      info(`skip for excluded path: ${file.filename}`);
-      filterIgnoredFiles.push(file);
-    } else {
-      filterSelectedFiles.push(file);
-    }
-  }
-
-  if (filterSelectedFiles.length === 0) {
-    warning("Skipped: filterSelectedFiles is null");
-    return;
-  }
-
-  const commits = incrementalDiff.data.commits;
-  printWithColor("incrementalDiff.data.commits (highestReviewedCommitId vs. context.payload.pull_request.head.sha)", incrementalDiff.data.commits);
-
   if (commits.length === 0) {
     warning("Skipped: commits is null");
     return;
   }
+
+  const { filterSelectedFiles, filterIgnoredFiles } = filterFilesForReview(files, options);
+
+  // skip files if they are filtered out (minimatched)
+  // files = filterSelectedFiles + filterIgnoredFiles
+  // filterIgnoredFiles 是通过 options.pathFilters.check() 方法过滤掉 excluded paths
+  // const filterSelectedFiles = [];
+  // const filterIgnoredFiles = [];
+  // for (const file of files) {
+  //   if (!options.checkPath(file.filename)) {
+  //     info(`skip for excluded path: ${file.filename}`);
+  //     filterIgnoredFiles.push(file);
+  //   } else {
+  //     filterSelectedFiles.push(file);
+  //   }
+  // }
+
+  // if (filterSelectedFiles.length === 0) {
+  //   warning("Skipped: filterSelectedFiles is null");
+  //   return;
+  // }
+
+  if (filterSelectedFiles.length === 0) {
+    warning("Skipped: No files selected for review after filtering.");
+    return;
+  }
+
+  // const commits = incrementalDiff.data.commits;
+  // printWithColor("incrementalDiff.data.commits (highestReviewedCommitId vs. context.payload.pull_request.head.sha)", incrementalDiff.data.commits);
 
   // find hunks to review
   // githubConcurrencyLimit(async () => {...}) 的用法意味着每次调用这个函数时，最多只会有 options.githubConcurrencyLimit 个异步任务同时执行。多余的任务将排队等待。这种机制常用于防止超过 API 请求限制，避免引发 429 "Too Many Requests" 错误。
