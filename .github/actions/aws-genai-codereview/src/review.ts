@@ -21,7 +21,6 @@ import { getTokenCount } from "./tokenizer";
 import { printWithColor, debugPrintCommitSha, areFilesArrayEqual } from "./utils";
 import { getPullRequestDescription, getDiffBetweenCommits } from "./lib";
 
-// eslint-disable-next-line camelcase
 const context = github_context;
 const repo = context.repo;
 
@@ -39,20 +38,30 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   }
 
   /*
-   虽然 pull_request 和 pull_request_target 是不同的事件类型，但它们的结构相同，GitHub 会在 context.payload.pull_request 中存储拉取请求的数据。因此，context.payload.pull_request 适用于两种事件类型。这里用于检查是否有新的变更需要审查。
+  Although pull_request and pull_request_target are different event types, they share the same structure. GitHub stores the pull request data in context.payload.pull_request for both event types. Therefore, context.payload.pull_request can be used to check for any new changes that need to be reviewed in both cases.
   */
   if (context.payload.pull_request == null) {
     warning("Skipped: context.payload.pull_request is null");
     return;
   }
 
+  /* 
+  The `pullRequestDescription` refers to the content of the first post created when a pull request is created. This description is displayed at the top of the pull request. Subsequent comments, including the first comment made on the pull request, are stored separately. In the context of the code, this first comment is represented by allComments[0].
+  */
   const pullRequestDescription = await getPullRequestDescription();
   printWithColor("getPullRequestDescription()", pullRequestDescription);
 
+  /*
+  The `input` is an instance of the Input class, which is used to store relevant data. This data is then passed to a large language model to summarize code changes, and perform a detailed review of specific code hunks.
+  */
   const inputs: Inputs = new Inputs();
   inputs.title = context.payload.pull_request.title;
   if (context.payload.pull_request.body != null) {
+    /*
+    NOTE: The commenter.getDescription(context.payload.pull_request.body) method retrieves content based on the pullRequestDescription, specifically extracting the bot-generated portion marked by a TAG. This is important because the pullRequestDescription may also contain manually added descriptions by users.
+    */
     inputs.description = commenter.getDescription(context.payload.pull_request.body);
+    printWithColor("inputs.description", inputs.description);
   }
 
   // if the description contains ignore_keyword, skip `"/reviewbot: ignore"`
