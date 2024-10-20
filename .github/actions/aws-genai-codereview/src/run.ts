@@ -7,6 +7,7 @@ import { handleReviewComment } from "./review-comment";
 import { isCollaborator } from "./permission";
 
 async function run(): Promise<void> {
+  // Step 1: Get the options from the GitHub workflow file
   const options: Options = new Options(
     getBooleanInput("debug"),
     getBooleanInput("disable_review"),
@@ -33,10 +34,10 @@ async function run(): Promise<void> {
    */
   options.print();
 
+  // Step 2: Create the prompts instance
   const prompts: Prompts = new Prompts(getInput("summarize"), getInput("summarize_release_notes"));
 
-  // Create two bots, one for summary and one for review
-
+  // Step 3: Create the bot instance, one for summary and one for review
   let lightBot: Bot | null = null;
   try {
     lightBot = new Bot(options, new BedrockOptions(options.bedrockLightModel, options.lightTokenLimits));
@@ -53,19 +54,27 @@ async function run(): Promise<void> {
     return;
   }
 
+  // Step 4: Run the code review （main logic here)
   try {
+    // Step 4.1: Only when the environment variables exist can the execution continue.
+    // GITHUB_ACTOR：表示触发 GitHub Action 的用户的用户名。也就是谁执行了当前操作（例如，发起 pull request 的用户）。
+    // GITHUB_REPOSITORY：表示触发该 GitHub Action 的存储库名称，格式通常是 用户名/仓库名。
     if (process.env.GITHUB_ACTOR === undefined || process.env.GITHUB_REPOSITORY === undefined) {
       warning("Skipped: required environment variables not found.");
       return;
     }
+
+    // Step 4.2: check if the user is a collaborator and if the action was configured to only allow collaborators
     if (options.onlyAllowCollaborator && !(await isCollaborator(process.env.GITHUB_ACTOR, process.env.GITHUB_REPOSITORY))) {
       warning(`Skipped: The user ${process.env.GITHUB_ACTOR} does not have collaborator access for the repository ${process.env.GITHUB_REPOSITORY}.`);
       return;
     }
-    // check if the event is pull_request
+    // Step 4.3: check if the event is pull_request
     if (process.env.GITHUB_EVENT_NAME === "pull_request" || process.env.GITHUB_EVENT_NAME === "pull_request_target") {
+      // Pull request event triggered, open or synchronize event
       await codeReview(lightBot, heavyBot, options, prompts);
     } else if (process.env.GITHUB_EVENT_NAME === "pull_request_review_comment") {
+      // Pull request review comment event triggered, somebody created/replied to a review comment
       await handleReviewComment(heavyBot, options, prompts);
     } else {
       warning("Skipped: this action only works on push events or pull_request");
@@ -115,3 +124,26 @@ await run();
 使用场景：常用于处理代码评审中的自动化操作，例如对代码评审中的特定评论做出响应，自动生成反馈或更新。
 
  */
+
+/*
+GITHUB_EVENT_NAME === "pull_request_review_comment" 这一事件确实是与 Pull Request 相关评论 触发的，但具体的触发情况可以分为以下几种：
+
+1. 什么是 pull_request_review_comment？
+pull_request_review_comment 事件是专门用于处理拉取请求（Pull Request）中单个代码段的评论。这个事件会在以下情况下触发：
+
+在代码评审过程中，某人对具体代码行添加了评论（Review Comment）。
+对之前的评论进行回复，也会触发这个事件。
+但这个事件特指那些在代码变更的具体行上进行的评论，而不是 Pull Request 的整体评论。
+
+2. 与普通的 Pull Request 评论（issue_comment）的区别
+GitHub 中有两种与评论相关的事件：
+
+pull_request_review_comment：用于代码评审时，在文件的具体行上添加的评论。
+issue_comment：用于在整个 Pull Request（或者 Issue）下添加的评论，这类评论不一定关联某一行代码。
+3. pull_request_review_comment 的触发条件
+pull_request_review_comment 事件会在以下场景触发：
+
+某人在代码评审时对具体代码行进行了评论，无论该评论是否有提交。
+任何人对已经存在的某个评论进行回复。
+因此，不需要新的 commit 或代码变更，只要有人在代码评审阶段对特定的代码行添加评论，或者回复某个评论，都会触发 pull_request_review_comment 事件。
+*/

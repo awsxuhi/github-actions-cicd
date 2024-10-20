@@ -781,6 +781,12 @@ getHighestReviewedCommitId 方法的作用
   }
 
   // allCommits 数组获取的是与某个具体的 Pull Request (PR) 相关的提交记录，而不是仓库中所有的提交。最终生成的 allCommits 数组中，最早的提交在前，最新的提交在最后。
+  /*
+GitHub API 的 listCommits（以及其他类似的 API）默认会将结果分页返回，每页只包含最多 30 条记录。如果 Pull Request 涉及的提交记录很多（比如超过 30 个），你需要手动处理分页来获取所有的提交。
+
+per_page：表示每一页返回的记录数。默认是 30 条，最大可以设置为 100 条。代码中设置 per_page: 100 是为了每次请求尽可能多地获取数据，减少分页请求的次数。
+page：表示当前获取的是第几页的数据。通过不断增加 page 的值，可以获取下一页的记录。
+  */
   async getAllCommitIds(): Promise<string[]> {
     const allCommits = [];
     let page = 1;
