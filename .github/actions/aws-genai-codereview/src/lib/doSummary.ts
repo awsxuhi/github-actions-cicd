@@ -31,6 +31,8 @@ export async function doSummary(
   // render prompt based on inputs so far
   const summarizePrompt = prompts.renderSummarizeFileDiff(ins, options.reviewSimpleChanges);
   const tokens = getTokenCount(summarizePrompt);
+  printWithColor("summarizePrompt", summarizePrompt);
+  printWithColor("# of tokens for ", tokens);
 
   if (tokens > options.lightTokenLimits.requestTokens) {
     info(`summarize: diff tokens exceeds limit, skip ${filename}`);
@@ -41,7 +43,6 @@ export async function doSummary(
   // summarize content
   try {
     const [summarizeResp] = await lightBot.chat(summarizePrompt);
-    printWithColor("summarizePrompt", summarizePrompt);
 
     if (summarizeResp === "") {
       info("summarize: nothing obtained from bedrock");

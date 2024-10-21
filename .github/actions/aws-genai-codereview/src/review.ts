@@ -180,7 +180,6 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   const skippedFiles = [];
   for (const [filename, fileContent, fileDiff] of filesAndChanges) {
     if (options.maxFiles <= 0 || summaryPromises.length < options.maxFiles) {
-      // 这行代码的主要作用是将一个异步总结操作添加到 summaryPromises 数组中，同时通过 bedrockConcurrencyLimit 函数来限制并发执行的数量。
       summaryPromises.push(
         bedrockConcurrencyLimit(async () => await doSummary(filename, fileContent, fileDiff, inputs, prompts, options, lightBot, summariesFailed))
       );
@@ -194,7 +193,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   // 过滤掉数组中所有 null 值，只保留有效的总结结果。
   printWithColor("summaryPromises", summaryPromises);
   const summaries = (await Promise.all(summaryPromises)).filter((summary) => summary !== null) as Array<[string, string, boolean]>;
-  printWithColor("summaries (at the end of all Promise)", summaries);
+  printWithColor("summaries (the result when Promise settled/resolved)", summaries);
   /*
   经过过滤后，summaries 将变为：
       [
