@@ -132,8 +132,8 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     warning("Skipped: commits is null");
     return;
   } else {
-    printWithColor("commits (since highestReviewedCommitId):", commits);
-    console.log("\nList all elements of commits Array:\n");
+    printWithColor("commits (=incrementalDiff.data.commits):", commits);
+    console.log(`\n\x1b[36m%s\x1b[0m`, `\nList all elements of commits Array (total ${commits.length} element, =context.payload.pull_request.head.sha):`);
     commits.forEach((commit) => {
       console.log(`${commit.sha}\n`);
     });
@@ -197,7 +197,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   // 过滤掉数组中所有 null 值，只保留有效的总结结果。
   printWithColor("summaryPromises", summaryPromises);
   const summaries = (await Promise.all(summaryPromises)).filter((summary) => summary !== null) as Array<[string, string, boolean]>;
-  printWithColor("[Important] summaries Array for all files (Array<[filename, summary, needsReview=true/false]>)", summaries);
+  printWithColor("[Important] summaries Array for all files (Array<[filename, summary, needsReview=true/false]>)", summaries, 2);
   /*
   经过过滤后，summaries 将变为：
       [
@@ -207,6 +207,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
       ]
   */
 
+  printWithColor("inputs.rawSummary (1. initial value):", inputs.rawSummary);
   if (summaries.length > 0) {
     const batchSize = 10;
     // join summaries into one in the batches of batchSize
@@ -218,14 +219,15 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
 ${filename}: ${summary}
 `;
       }
-      printWithColor("inputs.rawSummary", inputs.rawSummary);
+      printWithColor("inputs.rawSummary (2. new value)", inputs.rawSummary);
+      console.log(`\n\x1b[36m%s\x1b[0m`, `++++++ end of inputs.rawSummary (new value) ++++++`);
       // ask Bedrock to summarize the summaries
       const [summarizeResp] = await heavyBot.chat(prompts.renderSummarizeChangesets(inputs));
       if (summarizeResp === "") {
         warning("summarize: nothing obtained from bedrock");
       } else {
         inputs.rawSummary = summarizeResp;
-        printWithColor("inputs.rawSummary=summarizeResp", inputs.rawSummary);
+        printWithColor("inputs.rawSummary (3. final value with response from Bedrock)", inputs.rawSummary);
       }
     }
   }

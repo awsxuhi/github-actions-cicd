@@ -34,8 +34,10 @@ export async function doSummary(
   // render prompt based on inputs so far
   const summarizePrompt = prompts.renderSummarizeFileDiff(ins, options.reviewSimpleChanges);
   const tokens = getTokenCount(summarizePrompt);
-  printWithColor(`summarizePrompt for file ${baseFileName}`, summarizePrompt);
-  printWithColor("# of tokens for summarizePrompt", tokens);
+  console.log(`\n\x1b[36m%s\x1b[0m`, `summarizePrompt for '${baseFileName}' with ${tokens} tokens <doSummary.ts:27>`);
+  console.log(summarizePrompt);
+  // printWithColor(`summarizePrompt for file ${baseFileName}`, summarizePrompt);
+  // printWithColor("# of tokens for summarizePrompt", tokens);
 
   if (tokens > options.lightTokenLimits.requestTokens) {
     info(`summarize: diff tokens exceeds limit, skip ${filename}`);
@@ -64,10 +66,10 @@ export async function doSummary(
           const needsReview = triage === "NEEDS_REVIEW";
 
           // remove this line from the comment
-          printWithColor("summarizeResp from Bedrock for file ${path.basename(filename)} before triageMatch being removed", summarizeResp);
+          printWithColor(`summarizeResp from Bedrock for ${path.basename(filename)} before triageMatch being removed`, summarizeResp);
 
           const summary = summarizeResp.replace(triageRegex, "").trim();
-          printWithColor("summary for file ${path.basename(filename)} (triageMatch removed)", summary);
+          printWithColor(`summary for ${path.basename(filename)} (triageMatch removed)`, summary);
           // info(`filename: ${filename}, triage: ${triage}`);
           return [filename, summary, needsReview];
         }
