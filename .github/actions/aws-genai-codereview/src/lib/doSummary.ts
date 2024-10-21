@@ -29,11 +29,12 @@ export async function doSummary(
 
   ins.filename = filename;
   ins.fileDiff = fileDiff;
+  const baseFileName = path.basename(filename);
 
   // render prompt based on inputs so far
   const summarizePrompt = prompts.renderSummarizeFileDiff(ins, options.reviewSimpleChanges);
   const tokens = getTokenCount(summarizePrompt);
-  printWithColor(`summarizePrompt for file ${path.basename(filename)}`, summarizePrompt);
+  printWithColor(`summarizePrompt for file ${baseFileName}`, summarizePrompt);
   printWithColor("# of tokens for summarizePrompt", tokens);
 
   if (tokens > options.lightTokenLimits.requestTokens) {

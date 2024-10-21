@@ -133,6 +133,10 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     return;
   } else {
     printWithColor("commits (since highestReviewedCommitId):", commits);
+    console.log("\nList all elements of commits Array:\n");
+    commits.forEach((commit) => {
+      console.log(`${commit.sha}\n`);
+    });
   }
 
   /**
