@@ -108,7 +108,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     context.payload.pull_request.head.sha,
     highestReviewedCommitId,
     context.payload.before,
-    context.payload.after
+    context.payload.after // It's undefined when it's the first time the pull request was created
   );
 
   /********************************************************************************************************************

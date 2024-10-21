@@ -28,7 +28,11 @@ export function printWithColor(variableName: string, variableValue?: unknown, de
   // colors: true：让终端输出的结果带有颜色，方便阅读。
   if (variableValue !== undefined) {
     console.log(`\n\x1b[36m%s\x1b[0m`, `Printing ${variableName} <${file}:${line}>`);
-    console.dir(variableValue, { depth, colors });
+    if (depth !== null) {
+      console.dir(variableValue, { depth, colors });
+    } else {
+      console.log(variableValue);
+    }
   } else {
     console.log(`\n\x1b[95m%s\x1b[0m`, `Step ${step}: ${variableName} <${file}:${line}>`);
     incrementStep();
