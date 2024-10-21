@@ -96,9 +96,9 @@ export class Options {
   checkPath(path: string): boolean {
     const ok = this.pathFilters.check(path);
     if (ok) {
-      info(`checking path: ${path} => ${ok}, changed, to review.`);
+      info(`checking path: ${path} => ${ok} (ToReview)`);
     } else {
-      info(`checking path: ${path} => ${ok}, changed, skip.`);
+      info(`checking path: ${path} => ${ok} (skipped)`);
     }
     return ok;
   }

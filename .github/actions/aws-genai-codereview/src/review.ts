@@ -108,7 +108,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     context.payload.pull_request.head.sha,
     highestReviewedCommitId,
     context.payload.before,
-    context.payload.after
+    context.payload.after // It's undefined when it's the first time the pull request was created
   );
 
   /********************************************************************************************************************
@@ -132,7 +132,11 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     warning("Skipped: commits is null");
     return;
   } else {
-    printWithColor("commits (since highestReviewedCommitId):", commits);
+    printWithColor("commits (=incrementalDiff.data.commits):", commits);
+    console.log(`\n\x1b[36m%s\x1b[0m`, `\nList all elements of commits Array (total ${commits.length} element, =context.payload.pull_request.head.sha):`);
+    commits.forEach((commit) => {
+      console.log(`${commit.sha}\n`);
+    });
   }
 
   /**
@@ -157,10 +161,10 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     printWithColor("Skipped: no files to review.");
     return;
   } else if (filesAndChanges.length === 1) {
-    printWithColor("filesAndChanges has only one element:", [filesAndChanges[0][0], filesAndChanges[0][3]]);
+    printWithColor("filesAndChanges has only one element:", [filesAndChanges[0][0], filesAndChanges[0][3]], 2);
   } else {
-    printWithColor("The 1st element of filesAndChanges:", [filesAndChanges[0][0], filesAndChanges[0][3]]);
-    printWithColor("The 2nd element of filesAndChanges:", [filesAndChanges[1][0], filesAndChanges[1][3]]);
+    printWithColor("The 1st element of filesAndChanges:", [filesAndChanges[0][0], filesAndChanges[0][3]], 2);
+    printWithColor("The 2nd element of filesAndChanges:", [filesAndChanges[1][0], filesAndChanges[1][3]], 2);
   }
 
   /********************************************************************************************************************
@@ -180,7 +184,6 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   const skippedFiles = [];
   for (const [filename, fileContent, fileDiff] of filesAndChanges) {
     if (options.maxFiles <= 0 || summaryPromises.length < options.maxFiles) {
-      // 这行代码的主要作用是将一个异步总结操作添加到 summaryPromises 数组中，同时通过 bedrockConcurrencyLimit 函数来限制并发执行的数量。
       summaryPromises.push(
         bedrockConcurrencyLimit(async () => await doSummary(filename, fileContent, fileDiff, inputs, prompts, options, lightBot, summariesFailed))
       );
@@ -194,7 +197,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   // 过滤掉数组中所有 null 值，只保留有效的总结结果。
   printWithColor("summaryPromises", summaryPromises);
   const summaries = (await Promise.all(summaryPromises)).filter((summary) => summary !== null) as Array<[string, string, boolean]>;
-  printWithColor("summaries (at the end of all Promise)", summaries);
+  printWithColor("[Important] summaries Array for all files (Array<[filename, summary, needsReview=true/false]>)", summaries, 2);
   /*
   经过过滤后，summaries 将变为：
       [
@@ -204,6 +207,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
       ]
   */
 
+  printWithColor("inputs.rawSummary (1. initial value):", inputs.rawSummary);
   if (summaries.length > 0) {
     const batchSize = 10;
     // join summaries into one in the batches of batchSize
@@ -215,14 +219,15 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
 ${filename}: ${summary}
 `;
       }
-      printWithColor("inputs.rawSummary", inputs.rawSummary);
+      printWithColor("inputs.rawSummary (2. new value)", inputs.rawSummary);
+      console.log(`\n\x1b[36m%s\x1b[0m`, `++++++ end of inputs.rawSummary (new value) ++++++`);
       // ask Bedrock to summarize the summaries
       const [summarizeResp] = await heavyBot.chat(prompts.renderSummarizeChangesets(inputs));
       if (summarizeResp === "") {
         warning("summarize: nothing obtained from bedrock");
       } else {
         inputs.rawSummary = summarizeResp;
-        printWithColor("inputs.rawSummary=summarizeResp", inputs.rawSummary);
+        printWithColor("inputs.rawSummary (3. final value with response from Bedrock)", inputs.rawSummary);
       }
     }
   }
