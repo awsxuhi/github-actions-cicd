@@ -157,10 +157,10 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     printWithColor("Skipped: no files to review.");
     return;
   } else if (filesAndChanges.length === 1) {
-    printWithColor("filesAndChanges has only one element:", [filesAndChanges[0][0], filesAndChanges[0][3]]);
+    printWithColor("filesAndChanges has only one element:", [filesAndChanges[0][0], filesAndChanges[0][3]], 2);
   } else {
-    printWithColor("The 1st element of filesAndChanges:", [filesAndChanges[0][0], filesAndChanges[0][3]]);
-    printWithColor("The 2nd element of filesAndChanges:", [filesAndChanges[1][0], filesAndChanges[1][3]]);
+    printWithColor("The 1st element of filesAndChanges:", [filesAndChanges[0][0], filesAndChanges[0][3]], 2);
+    printWithColor("The 2nd element of filesAndChanges:", [filesAndChanges[1][0], filesAndChanges[1][3]], 2);
   }
 
   /********************************************************************************************************************
@@ -193,7 +193,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   // 过滤掉数组中所有 null 值，只保留有效的总结结果。
   printWithColor("summaryPromises", summaryPromises);
   const summaries = (await Promise.all(summaryPromises)).filter((summary) => summary !== null) as Array<[string, string, boolean]>;
-  printWithColor("summaries (the result when Promise settled/resolved)", summaries);
+  printWithColor("[Important] summaries Array for all files (Array<[filename, summary, needsReview=true/false]>)", summaries);
   /*
   经过过滤后，summaries 将变为：
       [

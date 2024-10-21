@@ -5,6 +5,7 @@ import { type Options } from "../options";
 import { type Prompts } from "../prompts";
 import { type Bot } from "../bot";
 import { Inputs } from "../inputs";
+import path from "path";
 
 export async function doSummary(
   filename: string,
@@ -16,7 +17,8 @@ export async function doSummary(
   lightBot: Bot,
   summariesFailed: string[]
 ): Promise<[string, string, boolean] | null> {
-  info(`Start summarizing: ${filename}`);
+  // info(`Start summarizing: ${filename}`);
+  console.log(`\n\x1b[36m%s\x1b[0m`, `Start summarizing: ${filename} <doSummary.ts:10>`);
   const ins = inputs.clone();
 
   if (fileDiff.length === 0) {
@@ -31,8 +33,8 @@ export async function doSummary(
   // render prompt based on inputs so far
   const summarizePrompt = prompts.renderSummarizeFileDiff(ins, options.reviewSimpleChanges);
   const tokens = getTokenCount(summarizePrompt);
-  printWithColor("summarizePrompt", summarizePrompt);
-  printWithColor("# of tokens for ", tokens);
+  printWithColor(`summarizePrompt for file ${path.basename(filename)}`, summarizePrompt);
+  printWithColor("# of tokens for summarizePrompt", tokens);
 
   if (tokens > options.lightTokenLimits.requestTokens) {
     info(`summarize: diff tokens exceeds limit, skip ${filename}`);
@@ -61,11 +63,11 @@ export async function doSummary(
           const needsReview = triage === "NEEDS_REVIEW";
 
           // remove this line from the comment
-          printWithColor("summarizeResp before triageMatch being removed", summarizeResp);
+          printWithColor("summarizeResp from Bedrock for file ${path.basename(filename)} before triageMatch being removed", summarizeResp);
 
           const summary = summarizeResp.replace(triageRegex, "").trim();
-          printWithColor("summary (triage removed)", summary);
-          info(`filename: ${filename}, triage: ${triage}`);
+          printWithColor("summary for file ${path.basename(filename)} (triageMatch removed)", summary);
+          // info(`filename: ${filename}, triage: ${triage}`);
           return [filename, summary, needsReview];
         }
       }
