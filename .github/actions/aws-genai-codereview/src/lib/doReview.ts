@@ -1,6 +1,6 @@
 import { error, info, warning } from "@actions/core";
 import { context as github_context } from "@actions/github";
-import { printWithColor } from "../utils";
+import { printWithColor, sanitizeJsonString } from "../utils";
 import { getTokenCount } from "../tokenizer";
 import { type Options } from "../options";
 import { type Prompts } from "../prompts";
@@ -168,7 +168,8 @@ function parseReview(response: string, patches: Array<[number, number, string]>)
   const reviews: Review[] = [];
 
   try {
-    const rawReviews = JSON.parse(response).reviews;
+    const res = sanitizeJsonString(response);
+    const rawReviews = JSON.parse(res).reviews;
     for (const r of rawReviews) {
       // 判断条件：如果 r.lgtm 为 false 且 r.comment 是空字符串/null/undefined，则跳过
       console.log(r);
