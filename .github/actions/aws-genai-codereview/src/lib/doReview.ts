@@ -129,6 +129,7 @@ ${commentChain}
       console.log(`\n\x1b[36m%s\x1b[0m`, `reviews (parsed from LLM response) for ${filename}: \n`);
       console.log(reviews);
 
+      // 如果 reviews 数组为空，那么 for...of 循环将不会执行
       for (const review of reviews) {
         console.log("Options:", options);
         console.log("Review object:", review);
@@ -169,13 +170,16 @@ function parseReview(response: string, patches: Array<[number, number, string]>)
   try {
     const rawReviews = JSON.parse(response).reviews;
     for (const r of rawReviews) {
-      if (r.comment) {
-        reviews.push({
-          startLine: r.line_start ?? 0,
-          endLine: r.line_end ?? 0,
-          comment: r.comment,
-        });
+      // 判断条件：如果 r.lgtm 为 false 且 r.comment 是空字符串/null/undefined，则跳过
+      if (r.lgtm === false && !r.comment) {
+        continue;
       }
+      reviews.push({
+        startLine: r.line_start ?? 0,
+        endLine: r.line_end ?? 0,
+        comment: r.comment || "", // 确保 comment 至少是空字符串
+        lgtm: r.lgtm ?? false, // 确保 lgtm 字段存在
+      });
     }
   } catch (e: any) {
     error(e.message);
