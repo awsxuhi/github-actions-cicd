@@ -118,7 +118,8 @@ ${commentChain}
 
       const reviews = parseReview(response, patches);
       printWithColor("response (from LLM)", response);
-      console.log(`\n\x1b[36m%s\x1b[0m`, `reviews for ${filename}: \n${reviews}`);
+      console.log(`\n\x1b[36m%s\x1b[0m`, `reviews (parsed from LLM response) for ${filename}: \n`);
+      console.log(reviews);
 
       for (const review of reviews) {
         if (!options.reviewCommentLGTM && (review.comment.includes("LGTM") || review.comment.includes("looks good to me"))) {
