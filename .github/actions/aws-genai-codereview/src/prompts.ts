@@ -141,14 +141,16 @@ Please review this change.
       "line_start": 22,
       "line_end": 22,
       "comment": "There's a syntax error in the add function.\\n  -    retrn z\\n  +    return z",
+      "lgtm": false
     },
     {
       "line_start": 23,
       "line_end": 24,
-      "comment": "There's a redundant new line here. It should be only one.",
+      "comment": "There's a new comment line here.",
+      "lgtm": true
     }
   ],
-  "lgtm": false
+  
 }
 </example_output>
 

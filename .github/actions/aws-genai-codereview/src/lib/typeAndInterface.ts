@@ -10,6 +10,7 @@ export interface Review {
   startLine: number;
   endLine: number;
   comment: string;
+  lgtm?: boolean;
 }
 
 export interface FilesResultFromCompareCommits {

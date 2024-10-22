@@ -332,7 +332,7 @@ ${SHORT_SUMMARY_END_TAG}
     // post the review - createReview() at commit level
     await commenter.submitReview(context.payload.pull_request.number, commits[commits.length - 1].sha, statusMsg);
 
-    // for debug purpose
+    // for debugging purpose
     console.log(
       `\n\x1b[36m%s\x1b[0m`,
       `I believe context.payload.pull_request.head.sha ${context.payload.pull_request.head.sha} equals to commits[commits.length - 1].sha ${
