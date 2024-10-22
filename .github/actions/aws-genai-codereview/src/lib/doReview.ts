@@ -131,13 +131,11 @@ ${commentChain}
 
       // 如果 reviews 数组为空，那么 for...of 循环将不会执行
       for (const review of reviews) {
-        console.log("Options:", options);
-        console.log("Review object:", review);
         console.log("options.reviewCommentLGTM:", options.reviewCommentLGTM);
         // if (!options.reviewCommentLGTM && (review.comment.includes("LGTM") || review.comment.includes("looks good to me"))) {
         if (!options.reviewCommentLGTM && Boolean(review.lgtm) === true) {
           reviewContext.lgtmCount += 1;
-          console.log(`\n\x1b[36m%s\x1b[0m`, `lgtm Count for ${filename}: \n`);
+          console.log(`\n\x1b[36m%s\x1b[0m`, `lgtm Count for ${filename}: ${reviewContext.lgtmCount}\n`);
           continue;
         }
         if (context.payload.pull_request == null) {
