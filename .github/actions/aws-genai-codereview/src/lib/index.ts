@@ -9,4 +9,5 @@ export { updateSummarizeCmtWithInProgressStatusMsg } from "./updateSummarizeCmtW
 export { generateStatusMsg } from "./generateStatusMsg";
 export { doSummary } from "./doSummary";
 export { doReview, type ReviewContext } from "./doReview";
+export { updateStatusMsg } from "./updateStatusMsg";
 export type { FileDiff, Commit, FilteredFile, Review, FilesResultFromCompareCommits } from "./typeAndInterface";

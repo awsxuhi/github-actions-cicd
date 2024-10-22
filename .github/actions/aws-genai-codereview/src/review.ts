@@ -19,6 +19,7 @@ import {
   generateStatusMsg,
   doSummary,
   doReview,
+  updateStatusMsg,
 } from "./lib";
 
 const context = github_context;
@@ -166,7 +167,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   await updateSummarizeCmtWithInProgressStatusMsg(existingSummarizeCmtBody, statusMsg, commenter);
 
   /********************************************************************************************************************
-  6. Generate the summary for each file, final summary, final releaseNotes, and short summary
+  6. Generate the summary for each file, final summary, final releaseNotes, short summary, and update summarizeComment
   ********************************************************************************************************************/
 
   const summariesFailed: string[] = [];
@@ -252,10 +253,7 @@ ${filename}: ${summary}
   inputs.shortSummary = summarizeShortResponse;
   printWithColor("summarizeShortResponse", inputs.shortSummary);
 
-  /********************************************************************************************************************
-  7. 
-  ********************************************************************************************************************/
-
+  // update summarize comment with more TAG components
   let summarizeComment = `${summarizeFinalResponse}
 ${RAW_SUMMARY_START_TAG}
 ${inputs.rawSummary}
@@ -265,32 +263,9 @@ ${inputs.shortSummary}
 ${SHORT_SUMMARY_END_TAG}
 `;
 
-  statusMsg += `
-${
-  skippedFiles.length > 0
-    ? `
-<details>
-<summary>Files not processed due to max files limit (${skippedFiles.length})</summary>
-
-* ${skippedFiles.join("\n* ")}
-
-</details>
-`
-    : ""
-}
-${
-  summariesFailed.length > 0
-    ? `
-<details>
-<summary>Files not summarized due to errors (${summariesFailed.length})</summary>
-
-* ${summariesFailed.join("\n* ")}
-
-</details>
-`
-    : ""
-}
-`;
+  /********************************************************************************************************************
+  7. Do codereview for each hunk of each file, and update the status message, then post the reviews
+  ********************************************************************************************************************/
 
   if (!options.disableReview) {
     // Step 1: Use the filter method to select the files that need to be reviewed from filesAndChanges.
@@ -341,62 +316,34 @@ ${
 
     await Promise.all(reviewPromises);
 
-    statusMsg += `
-${
-  reviewsFailed.length > 0
-    ? `<details>
-<summary>Files not reviewed due to errors (${reviewsFailed.length})</summary>
-
-* ${reviewsFailed.join("\n* ")}
-
-</details>
-`
-    : ""
-}
-${
-  reviewsSkipped.length > 0
-    ? `<details>
-<summary>Files skipped from review due to trivial changes (${reviewsSkipped.length})</summary>
-
-* ${reviewsSkipped.join("\n* ")}
-
-</details>
-`
-    : ""
-}
-<details>
-<summary>Review comments generated (${reviewCount + lgtmCount})</summary>
-
-* Review: ${reviewCount}
-* LGTM: ${lgtmCount}
-
-</details>
-
----
-
-<details>
-<summary>Tips</summary>
-
-### Chat with AI reviewer (\`/reviewbot\`)
-- Reply on review comments left by this bot to ask follow-up questions. A review comment is a comment on a diff or a file.
-- Invite the bot into a review comment chain by tagging \`/reviewbot\` in a reply.
-
-### Code suggestions
-- The bot may make code suggestions, but please review them carefully before committing since the line number ranges may be misaligned. 
-- You can edit the comment made by the bot and manually tweak the suggestion if it is slightly off.
-
-### Pausing incremental reviews
-- Add \`/reviewbot: ignore\` anywhere in the PR description to pause further reviews from the bot.
-
-</details>
-`;
+    // update the status message which will be posted later on.
+    statusMsg = updateStatusMsg(
+      statusMsg, // the initial value of statusMsg
+      skippedFiles, // 全局变量，包含被跳过的文件列表
+      summariesFailed, // 全局变量，包含摘要失败的文件列表
+      reviewsFailed, // 全局变量，包含审查失败的文件列表
+      reviewsSkipped, // 全局变量，包含被跳过的文件列表（因微小变动）
+      reviewCount, // 全局变量，包含已生成的审查评论数量
+      lgtmCount // 全局变量，包含 LGTM 数量
+    );
     // add existing_comment_ids_block with latest head sha
     summarizeComment += `\n${commenter.addReviewedCommitId(existingCommitIdsBlock, context.payload.pull_request.head.sha)}`;
 
     // post the review - createReview() at commit level
     await commenter.submitReview(context.payload.pull_request.number, commits[commits.length - 1].sha, statusMsg);
+
+    // for debug purpose
+    console.log(
+      `\n\x1b[36m%s\x1b[0m`,
+      `I believe context.payload.pull_request.head.sha ${context.payload.pull_request.head.sha} equals to commits[commits.length - 1].sha ${
+        commits[commits.length - 1].sha
+      }`
+    );
   }
 
+  /********************************************************************************************************************
+  8. Replace the summarizeComment with the commitIds appended and post it to the pull request
+  ********************************************************************************************************************/
   // post the final summary comment
   await commenter.comment(`${summarizeComment}`, SUMMARIZE_TAG, "replace");
 };
