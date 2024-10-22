@@ -130,8 +130,11 @@ ${commentChain}
       console.log(reviews);
 
       for (const review of reviews) {
+        console.log("Options:", options);
+        console.log("Review object:", review);
+        console.log("options.reviewCommentLGTM:", options.reviewCommentLGTM);
         // if (!options.reviewCommentLGTM && (review.comment.includes("LGTM") || review.comment.includes("looks good to me"))) {
-        if (!options.reviewCommentLGTM && review.lgtm === true) {
+        if (!options.reviewCommentLGTM && Boolean(review.lgtm) === true) {
           reviewContext.lgtmCount += 1;
           console.log(`\n\x1b[36m%s\x1b[0m`, `lgtm Count for ${filename}: \n`);
           continue;
