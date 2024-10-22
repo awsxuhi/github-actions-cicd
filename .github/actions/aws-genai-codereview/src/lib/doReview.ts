@@ -171,7 +171,8 @@ function parseReview(response: string, patches: Array<[number, number, string]>)
     const rawReviews = JSON.parse(response).reviews;
     for (const r of rawReviews) {
       // 判断条件：如果 r.lgtm 为 false 且 r.comment 是空字符串/null/undefined，则跳过
-      if (r.lgtm === false && !r.comment) {
+      console.log(r);
+      if (Boolean(r.lgtm) === false && !r.comment) {
         continue;
       }
       reviews.push({
