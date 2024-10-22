@@ -35,6 +35,10 @@ export class Bot {
   };
 
   private readonly chat_ = async (message: string, prefix: string = ""): Promise<[string, Ids]> => {
+    /*
+    prefix 的作用是用来提供一个初始的上下文，作为 AI 模型的辅助信息，以指导其响应。当 prefix 有值时，它会被添加到消息列表中，作为一个模型的提示，这通常用于提供一些基础或预设的信息，让模型根据它继续生成答案。
+    prefix 为 { 可能会提示模型生成与 JSON 结构或代码有关的内容。
+    */
     // record timing
     const start = Date.now();
     if (!message) {

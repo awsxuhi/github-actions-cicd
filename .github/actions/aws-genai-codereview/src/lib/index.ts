@@ -8,4 +8,5 @@ export { getFilesWithHunksArray } from "./getFilesWithHunksArray";
 export { updateSummarizeCmtWithInProgressStatusMsg } from "./updateSummarizeCmtWithInProgressStatusMsg";
 export { generateStatusMsg } from "./generateStatusMsg";
 export { doSummary } from "./doSummary";
+export { doReview, type ReviewContext } from "./doReview";
 export type { FileDiff, Commit, FilteredFile, Review, FilesResultFromCompareCommits } from "./typeAndInterface";

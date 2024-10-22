@@ -35,8 +35,8 @@ export const SHORT_SUMMARY_START_TAG = `<!-- This is an auto-generated comment: 
 export const SHORT_SUMMARY_END_TAG = `-->
 <!-- end of auto-generated comment: short summary by AI reviewer -->`;
 
-export const COMMIT_ID_START_TAG = "<!-- commit_ids_reviewed_start -->";
-export const COMMIT_ID_END_TAG = "<!-- commit_ids_reviewed_end -->";
+export const COMMIT_ID_START_TAG = "<!-- commit_ids_reviewed_start The latest ID is displayed at the bottom. -->";
+export const COMMIT_ID_END_TAG = "<!-- commit_ids_reviewed_end The latest ID is displayed at the bottom. -->";
 
 const SELF_LOGIN = "github-actions[bot]";
 
@@ -59,7 +59,7 @@ export class Commenter {
     if (!tag) {
       tag = COMMENT_TAG;
     }
-    printWithColor("tag", tag);
+    printWithColor("Tag (locate the summarize comment by searching for this tag.)", tag);
 
     const body = `${COMMENT_GREETING}
 
@@ -456,7 +456,7 @@ ${COMMENT_REPLY_TAG}
     );
   }
 
-  async getCommentChainsWithinRange(pullNumber: number, path: string, startLine: number, endLine: number, tag = "") {
+  async getCommentChainsWithinRange(pullNumber: number, path: string, startLine: number, endLine: number, tag = ""): Promise<string> {
     /**
      * GitHub 的 API 和 Octokit SDK 提供了一些获取评论的方法，例如：
 
@@ -483,6 +483,7 @@ listComments: 获取 issue 或 PR 的所有非审查评论。
       // get conversation chain
       const chain = await this.composeCommentChain(existingComments, topLevelComment);
       if (chain && chain.includes(tag)) {
+        // 只找到包含 tag 的 chain
         chainNum += 1;
         allChains += `Conversation Chain ${chainNum}:
 ${chain}

@@ -18,7 +18,6 @@ export function filterFilesForReview(files: FileDiff[], options: Options): { fil
   printWithColor("Filters files based on exclusion rules and returns selected and ignored files.");
   for (const file of files) {
     if (!options.checkPath(file.filename)) {
-      info(`+++ skip for excluded path: ${file.filename} +++`);
       filterIgnoredFiles.push(file);
     } else {
       filterSelectedFiles.push(file);
