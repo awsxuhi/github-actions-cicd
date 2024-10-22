@@ -12,7 +12,7 @@ inputs:
   bot_name:
     required: false
     description: "The name for the bot"
-    default: "GenAI-CodeReview-Bot[AWS Bedrock]"
+    default: "AWS-Bedrock-CodeReview-Bot"
   bedrock_light_model:
     required: false
     description: "Model to use for simple tasks like summarizing diff on a file."

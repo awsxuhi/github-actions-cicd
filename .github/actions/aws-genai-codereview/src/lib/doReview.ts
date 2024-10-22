@@ -142,7 +142,7 @@ ${commentChain}
 
         try {
           reviewContext.reviewCount += 1;
-          await commenter.bufferReviewComment(filename, review.startLine, review.endLine, `${options.botName}\n${review.comment}`);
+          await commenter.bufferReviewComment(filename, review.startLine, review.endLine, `🟣 **${options.botName}** 🟣: ${review.comment}`);
         } catch (e: any) {
           reviewContext.reviewsFailed.push(`${filename} comment failed (${e})`);
         }
