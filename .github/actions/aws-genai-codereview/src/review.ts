@@ -1,27 +1,14 @@
-import { error, info, warning } from "@actions/core";
+import { info, warning } from "@actions/core";
 import { context as github_context } from "@actions/github";
 import pLimit from "p-limit";
 import { type Bot } from "./bot";
-import {
-  Commenter,
-  COMMENT_REPLY_TAG,
-  RAW_SUMMARY_END_TAG,
-  RAW_SUMMARY_START_TAG,
-  SHORT_SUMMARY_END_TAG,
-  SHORT_SUMMARY_START_TAG,
-  SUMMARIZE_TAG,
-} from "./commenter";
+import { Commenter, RAW_SUMMARY_END_TAG, RAW_SUMMARY_START_TAG, SHORT_SUMMARY_END_TAG, SHORT_SUMMARY_START_TAG, SUMMARIZE_TAG } from "./commenter";
 import { Inputs } from "./inputs";
-import { octokit } from "./octokit";
 import { type Options } from "./options";
 import { type Prompts } from "./prompts";
-import { getTokenCount } from "./tokenizer";
 import { printWithColor, debugPrintCommitSha } from "./utils";
 import {
-  type FileDiff,
-  type Commit,
-  type FilteredFile,
-  type Review,
+  type ReviewContext,
   getPullRequestDescription,
   updateInputsWithExistingSummary,
   getTheHighestReviewedCommitId,
@@ -31,6 +18,7 @@ import {
   updateSummarizeCmtWithInProgressStatusMsg,
   generateStatusMsg,
   doSummary,
+  doReview,
 } from "./lib";
 
 const context = github_context;
@@ -133,7 +121,10 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     return;
   } else {
     printWithColor("commits (=incrementalDiff.data.commits):", commits);
-    console.log(`\n\x1b[36m%s\x1b[0m`, `\nList all elements of commits Array (total ${commits.length} element, =context.payload.pull_request.head.sha):`);
+    console.log(
+      `\n\x1b[36m%s\x1b[0m`,
+      `List all elements of commits Array (total ${commits.length} elements since last review, usually=context.payload.pull_request.head.sha):`
+    );
     commits.forEach((commit) => {
       console.log(`${commit.sha}\n`);
     });
@@ -175,7 +166,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   await updateSummarizeCmtWithInProgressStatusMsg(existingSummarizeCmtBody, statusMsg, commenter);
 
   /********************************************************************************************************************
-  6. 
+  6. Generate the summary for each file, final summary, final releaseNotes, and short summary
   ********************************************************************************************************************/
 
   const summariesFailed: string[] = [];
@@ -261,6 +252,10 @@ ${filename}: ${summary}
   inputs.shortSummary = summarizeShortResponse;
   printWithColor("summarizeShortResponse", inputs.shortSummary);
 
+  /********************************************************************************************************************
+  7. 
+  ********************************************************************************************************************/
+
   let summarizeComment = `${summarizeFinalResponse}
 ${RAW_SUMMARY_START_TAG}
 ${inputs.rawSummary}
@@ -269,7 +264,6 @@ ${SHORT_SUMMARY_START_TAG}
 ${inputs.shortSummary}
 ${SHORT_SUMMARY_END_TAG}
 `;
-  printWithColor("==> summarizeComment", summarizeComment);
 
   statusMsg += `
 ${
@@ -297,142 +291,47 @@ ${
     : ""
 }
 `;
-  printWithColor("==> statusMsg", statusMsg);
 
   if (!options.disableReview) {
-    // 使用 filter 方法从 filesAndChanges 中筛选出需要审查的文件
-    // 通过查找 summaries 中与 filename 相匹配的条目并读取其第三项（[2]）来决定是否需要审查。如果没有找到匹配条目，默认认为需要审查（true）。
+    // Step 1: Use the filter method to select the files that need to be reviewed from filesAndChanges.
+    /* This is done by searching for matching entries in summaries based on the filename. You then check the third item ([2]) of the matching entry to decide whether a review is required. If no matching entry is found, it is assumed that the file needs review (true by default).
+     */
     const filesAndChangesReview = filesAndChanges.filter(([filename]) => {
       const needsReview = summaries.find(([summaryFilename]) => summaryFilename === filename)?.[2] ?? true;
       return needsReview;
     });
 
-    // 这段代码通过检查哪些文件没有包含在 filesAndChangesReview 中，从而生成被跳过审查的文件列表。
-    // 使用 filter 方法筛选出未包含在 filesAndChangesReview 中的文件，并返回这些文件的 filename。
+    // Step 2: Generate a list of files that were skipped from review.
+    /* Use the filter method to select files that are not included in filesAndChangesReview, and return their filenames.
+     */
     const reviewsSkipped = filesAndChanges
       .filter(([filename]) => !filesAndChangesReview.some(([reviewFilename]) => reviewFilename === filename))
       .map(([filename]) => filename);
 
-    // failed reviews array
-    // reviewsFailed：用于存储审查失败的文件。
-    // lgtmCount 和 reviewCount 分别用于跟踪已通过审查的数量和总审查数。
+    // Step 3: Initialize an array for files that fail the review, which will store the files that fail during the large language model's code review process. Begin executing the code review.
+    /* Use lgtmCount and reviewCount to track the number of files that have passed the review and the total number of files reviewed, respectively. The total number of successfully reviewed files is calculated as lgtmCount + reviewCount.
+     */
     const reviewsFailed: string[] = [];
     let lgtmCount = 0;
     let reviewCount = 0;
-    const doReview = async (filename: string, fileContent: string, patches: Array<[number, number, string]>): Promise<void> => {
-      info(`reviewing ${filename}`);
-      // make a copy of inputs
-      const ins: Inputs = inputs.clone();
-      ins.filename = filename;
 
-      // calculate tokens based on inputs so far
-      let tokens = getTokenCount(prompts.renderReviewFileDiff(ins));
-      // loop to calculate total patch tokens
-      let patchesToPack = 0;
-      for (const [, , patch] of patches) {
-        const patchTokens = getTokenCount(patch);
-        if (tokens + patchTokens > options.heavyTokenLimits.requestTokens) {
-          info(`only packing ${patchesToPack} / ${patches.length} patches, tokens: ${tokens} / ${options.heavyTokenLimits.requestTokens}`);
-          break;
-        }
-        tokens += patchTokens;
-        patchesToPack += 1;
-      }
-
-      let patchesPacked = 0;
-      for (const [startLine, endLine, patch] of patches) {
-        if (context.payload.pull_request == null) {
-          warning("No pull request found, skipping.");
-          continue;
-        }
-        // see if we can pack more patches into this request
-        if (patchesPacked >= patchesToPack) {
-          info(`unable to pack more patches into this request, packed: ${patchesPacked}, total patches: ${patches.length}, skipping.`);
-          if (options.debug) {
-            info(`prompt so far: ${prompts.renderReviewFileDiff(ins)}`);
-          }
-          break;
-        }
-        patchesPacked += 1;
-
-        let commentChain = "";
-        try {
-          const allChains = await commenter.getCommentChainsWithinRange(context.payload.pull_request.number, filename, startLine, endLine, COMMENT_REPLY_TAG);
-
-          if (allChains.length > 0) {
-            info(`Found comment chains: ${allChains} for ${filename}`);
-            commentChain = allChains;
-          }
-        } catch (e: any) {
-          warning(`Failed to get comments: ${e as string}, skipping. backtrace: ${e.stack as string}`);
-        }
-        // try packing comment_chain into this request
-        // this.requestTokens = this.maxTokens - this.responseTokens - 200; by default, it's 195800. This is input token limit.
-        const commentChainTokens = getTokenCount(commentChain);
-        if (tokens + commentChainTokens > options.heavyTokenLimits.requestTokens) {
-          commentChain = "";
-        } else {
-          tokens += commentChainTokens;
-        }
-
-        ins.patches += `
-${patch}
-`;
-        if (commentChain !== "") {
-          ins.patches += `
-<comment_chains>
-\`\`\`
-${commentChain}
-\`\`\`
-</comment_chains>
-`;
-        }
-      }
-
-      if (patchesPacked > 0) {
-        // perform review
-        try {
-          const [response] = await heavyBot.chat(prompts.renderReviewFileDiff(ins), "{");
-          if (response === "") {
-            info("review: nothing obtained from bedrock");
-            reviewsFailed.push(`${filename} (no response)`);
-            return;
-          }
-          // parse review
-          const reviews = parseReview(response, patches);
-          for (const review of reviews) {
-            // check for LGTM
-            if (!options.reviewCommentLGTM && (review.comment.includes("LGTM") || review.comment.includes("looks good to me"))) {
-              lgtmCount += 1;
-              continue;
-            }
-            if (context.payload.pull_request == null) {
-              warning("No pull request found, skipping.");
-              continue;
-            }
-
-            try {
-              reviewCount += 1;
-              await commenter.bufferReviewComment(filename, review.startLine, review.endLine, `${review.comment}`);
-            } catch (e: any) {
-              reviewsFailed.push(`${filename} comment failed (${e as string})`);
-            }
-          }
-        } catch (e: any) {
-          warning(`Failed to review: ${e as string}, skipping. backtrace: ${e.stack as string}`);
-          reviewsFailed.push(`${filename} (${e as string})`);
-        }
-      } else {
-        reviewsSkipped.push(`${filename} (diff too large)`);
-      }
+    const reviewContext: ReviewContext = {
+      inputs,
+      prompts,
+      options,
+      commenter,
+      heavyBot,
+      lgtmCount,
+      reviewCount,
+      reviewsFailed,
+      reviewsSkipped,
     };
-
     const reviewPromises = [];
     for (const [filename, fileContent, , patches] of filesAndChangesReview) {
       if (options.maxFiles <= 0 || reviewPromises.length < options.maxFiles) {
         reviewPromises.push(
           bedrockConcurrencyLimit(async () => {
-            await doReview(filename, fileContent, patches);
+            await doReview(filename, fileContent, patches, reviewContext);
           })
         );
       } else {
@@ -501,29 +400,3 @@ ${
   // post the final summary comment
   await commenter.comment(`${summarizeComment}`, SUMMARIZE_TAG, "replace");
 };
-
-function parseReview(
-  response: string,
-  // eslint-disable-next-line no-unused-vars
-  patches: Array<[number, number, string]>
-): Review[] {
-  const reviews: Review[] = [];
-
-  try {
-    const rawReviews = JSON.parse(response).reviews;
-    for (const r of rawReviews) {
-      if (r.comment) {
-        reviews.push({
-          startLine: r.line_start ?? 0,
-          endLine: r.line_end ?? 0,
-          comment: r.comment,
-        });
-      }
-    }
-  } catch (e: any) {
-    error(e.message);
-    return [];
-  }
-
-  return reviews;
-}

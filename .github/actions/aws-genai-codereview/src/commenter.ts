@@ -456,7 +456,7 @@ ${COMMENT_REPLY_TAG}
     );
   }
 
-  async getCommentChainsWithinRange(pullNumber: number, path: string, startLine: number, endLine: number, tag = "") {
+  async getCommentChainsWithinRange(pullNumber: number, path: string, startLine: number, endLine: number, tag = ""): Promise<string> {
     /**
      * GitHub 的 API 和 Octokit SDK 提供了一些获取评论的方法，例如：
 
@@ -483,6 +483,7 @@ listComments: 获取 issue 或 PR 的所有非审查评论。
       // get conversation chain
       const chain = await this.composeCommentChain(existingComments, topLevelComment);
       if (chain && chain.includes(tag)) {
+        // 只找到包含 tag 的 chain
         chainNum += 1;
         allChains += `Conversation Chain ${chainNum}:
 ${chain}
