@@ -6,7 +6,6 @@ import { type Options } from "../options";
 import { type Prompts } from "../prompts";
 import { type Bot } from "../bot";
 import { Inputs } from "../inputs";
-import { type Review } from "../lib";
 import { Commenter, COMMENT_REPLY_TAG } from "../commenter";
 
 export interface ReviewContext {
@@ -21,6 +20,13 @@ export interface ReviewContext {
   reviewsSkipped: string[];
 }
 
+export interface Review {
+  startLine: number;
+  endLine: number;
+  comment: string;
+  lgtm?: boolean;
+}
+
 /***********************************
  * Function: doReview()
  ***********************************/
@@ -33,7 +39,8 @@ export const doReview = async (
   const { inputs, prompts, options, commenter, heavyBot } = reviewContext;
   const context = github_context;
 
-  console.log(`\n\x1b[36m%s\x1b[0m`, `Start summarizing: ${filename} <doSummary.ts>`);
+  printWithColor("Do code review on hunks for each file...");
+  console.log(`\n\x1b[36m%s\x1b[0m`, `Start reviewing: ${filename} <doSummary.ts>`);
 
   // make a copy of inputs
   const ins: Inputs = inputs.clone();
@@ -116,15 +123,15 @@ ${commentChain}
         return;
       }
 
-      const reviews = parseReview(response, patches);
       console.log(`\n\x1b[36m%s\x1b[0m`, `response (from LLM) for ${filename}: \n`);
       console.log(response);
+      const reviews = parseReview(response, patches);
       console.log(`\n\x1b[36m%s\x1b[0m`, `reviews (parsed from LLM response) for ${filename}: \n`);
       console.log(reviews);
 
       for (const review of reviews) {
         // if (!options.reviewCommentLGTM && (review.comment.includes("LGTM") || review.comment.includes("looks good to me"))) {
-        if (!options.reviewCommentLGTM && (review.lgtm === true || review.comment.includes("looks good to me"))) {
+        if (!options.reviewCommentLGTM && review.lgtm === true) {
           reviewContext.lgtmCount += 1;
           continue;
         }
@@ -135,7 +142,7 @@ ${commentChain}
 
         try {
           reviewContext.reviewCount += 1;
-          await commenter.bufferReviewComment(filename, review.startLine, review.endLine, `${review.comment}`);
+          await commenter.bufferReviewComment(filename, review.startLine, review.endLine, `${options.botName}\n${review.comment}`);
         } catch (e: any) {
           reviewContext.reviewsFailed.push(`${filename} comment failed (${e})`);
         }
