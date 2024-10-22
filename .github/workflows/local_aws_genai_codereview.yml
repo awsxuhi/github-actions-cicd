@@ -82,5 +82,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           debug: false
-          review_simple_changes: false
+          review_simple_changes: true
           review_comment_lgtm: false

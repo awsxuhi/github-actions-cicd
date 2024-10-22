@@ -169,7 +169,8 @@ function parseReview(response: string, patches: Array<[number, number, string]>)
 
   try {
     const res = sanitizeJsonString(response);
-    const rawReviews = JSON.parse(res).reviews;
+    const parsedResponse = JSON.parse(res);
+    const rawReviews = parsedResponse.reviews;
     for (const r of rawReviews) {
       // 判断条件：如果 r.lgtm 为 false 且 r.comment 是空字符串/null/undefined，则跳过
       console.log(r);
