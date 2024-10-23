@@ -174,7 +174,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   5. Update the in progress statsMsg to the beginning of the summarize comment (usually the first comment after the PR description).
   ********************************************************************************************************************/
 
-  let statusMsg = generateStatusMsg(highestReviewedCommitId, filesAndChanges, filterIgnoredFiles);
+  let statusMsg = generateStatusMsg(highestReviewedCommitId, filesAndChanges, filterIgnoredFiles, options);
   await updateSummarizeCmtWithInProgressStatusMsg(existingSummarizeCmtBody, statusMsg, commenter);
 
   /********************************************************************************************************************

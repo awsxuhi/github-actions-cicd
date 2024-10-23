@@ -29,12 +29,32 @@ interface Review {
 export async function findLatestReviewedCommit(owner: string, repo: string, pull_number: number, searchString: string, baseSha: string): Promise<ReviewResult> {
   const context = github_context;
 
+  // Get all comments for the specified pull request
+  const commentsResponse = await octokit.issues.listComments({
+    owner,
+    repo,
+    issue_number: pull_number, // PR numbers are treated as issue numbers in GitHub API
+  });
+
+  const comments = commentsResponse.data;
+
+  // Ensure comments exist and assign them to a strongly-typed array
+  comments.forEach((comment: any) => {
+    printWithColor("All comments:", comment.body);
+  });
+
+  const filteredComments = comments.filter((comment: any) => comment.body && comment.body.includes(searchString));
+  filteredComments.forEach((comment: any) => {
+    printWithColor("Filtered comments:", comment.body);
+  });
+
   // Get all reviews for the specified pull request
   const reviewsResponse = await octokit.pulls.listReviews({
     owner,
     repo,
     pull_number,
   });
+  printWithColor("reviewsResponse", reviewsResponse, 2);
 
   // Ensure reviews exist and assign them to a strongly-typed array
   const reviews: Review[] = reviewsResponse.data as Review[];
