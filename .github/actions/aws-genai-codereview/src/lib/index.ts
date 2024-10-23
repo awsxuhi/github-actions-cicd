@@ -4,6 +4,7 @@ export { updateInputsWithExistingSummary } from "./updateInputsWithExistingSumma
 export { getTheHighestReviewedCommitId } from "./getTheHighestReviewedCommitId";
 export { getFilesForReviewAfterTheHighestReviewedCommitId } from "./getFilesForReviewAfterTheHighestReviewedCommitId";
 export { filterFilesForReview } from "./filterFilesForReview";
+export { findLatestReviewedCommit } from "./findLatestReviewedCommit";
 export { getFilesWithHunksArray } from "./getFilesWithHunksArray";
 export { updateSummarizeCmtWithInProgressStatusMsg } from "./updateSummarizeCmtWithInProgressStatusMsg";
 export { generateStatusMsg } from "./generateStatusMsg";
