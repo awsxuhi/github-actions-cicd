@@ -41,10 +41,16 @@ export async function findLatestReviewedCommit(owner: string, repo: string, pull
   printWithColor("# of existing reviews: ", reviews.length);
   printWithColor("searchString: ", searchString);
 
+  reviews.forEach((review) => {
+    printWithColor("All reviews:", review.body);
+  });
+
   // Filter reviews that include the search string at the beginning of the body
   // const filteredReviews = reviews.filter((review) => review.body && review.body.startsWith(searchString));
   const filteredReviews = reviews.filter((review) => review.body && review.body.includes(searchString));
-  filteredReviews.map((review) => printWithColor("review:", review.body));
+  filteredReviews.forEach((filteredReviews) => {
+    printWithColor("Filtered reviews:", filteredReviews.body);
+  });
 
   // Check if there are any matching reviews
   if (filteredReviews.length > 0) {
