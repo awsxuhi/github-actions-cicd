@@ -4,6 +4,7 @@ import { TokenLimits } from "./limits";
 
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 export class Options {
+  botIcon: string;
   botName: string;
   debug: boolean;
   disableReview: boolean;
@@ -27,6 +28,7 @@ export class Options {
   language: string;
 
   constructor(
+    botIcon: string,
     botName: string,
     debug: boolean,
     disableReview: boolean,
@@ -47,6 +49,7 @@ export class Options {
     githubConcurrencyLimit = "6",
     language = "en-US"
   ) {
+    this.botIcon = botIcon;
     this.botName = botName;
     this.debug = debug;
     this.disableReview = disableReview;

@@ -97,7 +97,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     repo.owner,
     repo.repo,
     context.payload.pull_request.number,
-    options.botName,
+    `**${options.botName}**`,
     context.payload.pull_request.head.sha
   );
   printWithColor("hasExistingReview", hasExistingReview);

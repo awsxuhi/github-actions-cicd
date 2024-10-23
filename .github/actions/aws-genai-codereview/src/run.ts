@@ -9,6 +9,7 @@ import { isCollaborator } from "./permission";
 async function run(): Promise<void> {
   // Step 1: Get the options from the GitHub workflow file
   const options: Options = new Options(
+    getInput("bot_icon"),
     getInput("bot_name"),
     getBooleanInput("debug"),
     getBooleanInput("disable_review"),

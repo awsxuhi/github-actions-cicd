@@ -46,7 +46,7 @@ export async function getFilesForReviewAfterTheHighestReviewedCommitId(
   // Check if files are equal to incrementalFiles for debugging purposes ONLY, below 2 lines can be removed later
   const isEqual = areFilesArrayEqual(files, incrementalFiles);
   info(
-    `\n\nComparison result: ${
+    `Comparison result: ${
       isEqual
         ? "Files filtered from TargetBranchFiles are equal to incrementalFiles."
         : "Files filtered from TargetBranchFiles are NOT equal to incrementalFiles."

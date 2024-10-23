@@ -1,5 +1,6 @@
 import { context as github_context } from "@actions/github";
 import { octokit } from "../octokit";
+import { printWithColor } from "@/utils";
 
 type ReviewResult = [boolean, string]; // Return type as a tuple with boolean and string
 
@@ -39,7 +40,9 @@ export async function findLatestReviewedCommit(owner: string, repo: string, pull
   const reviews: Review[] = reviewsResponse.data as Review[];
 
   // Filter reviews that include the search string at the beginning of the body
-  const filteredReviews = reviews.filter((review) => review.body && review.body.startsWith(searchString));
+  // const filteredReviews = reviews.filter((review) => review.body && review.body.startsWith(searchString));
+  const filteredReviews = reviews.filter((review) => review.body && review.body.includes(searchString));
+  filteredReviews.map((review) => printWithColor("review:", review.body));
 
   // Check if there are any matching reviews
   if (filteredReviews.length > 0) {
