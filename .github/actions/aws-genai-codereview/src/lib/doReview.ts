@@ -1,12 +1,11 @@
 import { error, info, warning } from "@actions/core";
 import { context as github_context } from "@actions/github";
-import { printWithColor } from "../utils";
+import { printWithColor, sanitizeJsonString } from "../utils";
 import { getTokenCount } from "../tokenizer";
 import { type Options } from "../options";
 import { type Prompts } from "../prompts";
 import { type Bot } from "../bot";
 import { Inputs } from "../inputs";
-import { type Review } from "../lib";
 import { Commenter, COMMENT_REPLY_TAG } from "../commenter";
 
 export interface ReviewContext {
@@ -21,6 +20,13 @@ export interface ReviewContext {
   reviewsSkipped: string[];
 }
 
+export interface Review {
+  startLine: number;
+  endLine: number;
+  comment: string;
+  lgtm?: boolean;
+}
+
 /***********************************
  * Function: doReview()
  ***********************************/
@@ -33,7 +39,8 @@ export const doReview = async (
   const { inputs, prompts, options, commenter, heavyBot } = reviewContext;
   const context = github_context;
 
-  console.log(`\n\x1b[36m%s\x1b[0m`, `Start summarizing: ${filename} <doSummary.ts>`);
+  printWithColor("Do code review on hunks for each file...");
+  console.log(`\n\x1b[36m%s\x1b[0m`, `Start reviewing: ${filename} <doSummary.ts>`);
 
   // make a copy of inputs
   const ins: Inputs = inputs.clone();
@@ -116,14 +123,19 @@ ${commentChain}
         return;
       }
 
+      console.log(`\n\x1b[36m%s\x1b[0m`, `response (from LLM) for ${filename}: \n`);
+      console.log(response);
       const reviews = parseReview(response, patches);
-      printWithColor("response (from LLM)", response);
       console.log(`\n\x1b[36m%s\x1b[0m`, `reviews (parsed from LLM response) for ${filename}: \n`);
       console.log(reviews);
 
+      // 如果 reviews 数组为空，那么 for...of 循环将不会执行
       for (const review of reviews) {
-        if (!options.reviewCommentLGTM && (review.comment.includes("LGTM") || review.comment.includes("looks good to me"))) {
+        console.log("options.reviewCommentLGTM:", options.reviewCommentLGTM);
+        // if (!options.reviewCommentLGTM && (review.comment.includes("LGTM") || review.comment.includes("looks good to me"))) {
+        if (!options.reviewCommentLGTM && Boolean(review.lgtm) === true) {
           reviewContext.lgtmCount += 1;
+          console.log(`\n\x1b[36m%s\x1b[0m`, `lgtm Count for ${filename}: ${reviewContext.lgtmCount}\n`);
           continue;
         }
         if (context.payload.pull_request == null) {
@@ -133,7 +145,7 @@ ${commentChain}
 
         try {
           reviewContext.reviewCount += 1;
-          await commenter.bufferReviewComment(filename, review.startLine, review.endLine, `${review.comment}`);
+          await commenter.bufferReviewComment(filename, review.startLine, review.endLine, `**${options.botName}** ${options.botIcon}: ${review.comment}`);
         } catch (e: any) {
           reviewContext.reviewsFailed.push(`${filename} comment failed (${e})`);
         }
@@ -154,15 +166,21 @@ function parseReview(response: string, patches: Array<[number, number, string]>)
   const reviews: Review[] = [];
 
   try {
-    const rawReviews = JSON.parse(response).reviews;
+    const res = sanitizeJsonString(response);
+    const parsedResponse = JSON.parse(res);
+    const rawReviews = parsedResponse.reviews;
     for (const r of rawReviews) {
-      if (r.comment) {
-        reviews.push({
-          startLine: r.line_start ?? 0,
-          endLine: r.line_end ?? 0,
-          comment: r.comment,
-        });
+      // 判断条件：如果 r.lgtm 为 false 且 r.comment 是空字符串/null/undefined，则跳过
+      console.log(r);
+      if (Boolean(r.lgtm) === false && !r.comment) {
+        continue;
       }
+      reviews.push({
+        startLine: r.line_start ?? 0,
+        endLine: r.line_end ?? 0,
+        comment: r.comment || "", // 确保 comment 至少是空字符串
+        lgtm: r.lgtm ?? false, // 确保 lgtm 字段存在
+      });
     }
   } catch (e: any) {
     error(e.message);

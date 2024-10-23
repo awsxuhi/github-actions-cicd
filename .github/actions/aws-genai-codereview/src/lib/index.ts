@@ -4,9 +4,11 @@ export { updateInputsWithExistingSummary } from "./updateInputsWithExistingSumma
 export { getTheHighestReviewedCommitId } from "./getTheHighestReviewedCommitId";
 export { getFilesForReviewAfterTheHighestReviewedCommitId } from "./getFilesForReviewAfterTheHighestReviewedCommitId";
 export { filterFilesForReview } from "./filterFilesForReview";
+export { findLatestReviewedCommit } from "./findLatestReviewedCommit";
 export { getFilesWithHunksArray } from "./getFilesWithHunksArray";
 export { updateSummarizeCmtWithInProgressStatusMsg } from "./updateSummarizeCmtWithInProgressStatusMsg";
 export { generateStatusMsg } from "./generateStatusMsg";
 export { doSummary } from "./doSummary";
 export { doReview, type ReviewContext } from "./doReview";
-export type { FileDiff, Commit, FilteredFile, Review, FilesResultFromCompareCommits } from "./typeAndInterface";
+export { updateStatusMsg } from "./updateStatusMsg";
+export type { FileDiff, Commit, FilteredFile, FilesResultFromCompareCommits } from "./typeAndInterface";

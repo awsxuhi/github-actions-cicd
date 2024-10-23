@@ -18,6 +18,7 @@ export async function doSummary(
   summariesFailed: string[]
 ): Promise<[string, string, boolean] | null> {
   // info(`Start summarizing: ${filename}`);
+  printWithColor("Do changes summarization on for each file...");
   console.log(`\n\x1b[36m%s\x1b[0m`, `Start summarizing: ${filename} <doSummary.ts>`);
   const ins = inputs.clone();
 

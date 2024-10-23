@@ -14,6 +14,6 @@ export function areFilesArrayEqual(fileArray1: Array<{ filename: string }>, file
     }
   }
 
-  console.info("result from areFilesArrayEqual(): equal.");
+  console.info("\nresult from areFilesArrayEqual(): equal.");
   return true;
 }

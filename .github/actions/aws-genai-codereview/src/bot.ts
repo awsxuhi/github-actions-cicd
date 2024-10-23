@@ -58,9 +58,7 @@ export class Bot {
             new InvokeModelCommand({
               modelId: this.bedrockOptions.model,
               body: JSON.stringify({
-                // eslint-disable-next-line camelcase
                 anthropic_version: "bedrock-2023-05-31",
-                // eslint-disable-next-line camelcase
                 max_tokens: 4096,
                 temperature: 0,
                 messages: [

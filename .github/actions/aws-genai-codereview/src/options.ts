@@ -4,6 +4,8 @@ import { TokenLimits } from "./limits";
 
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 export class Options {
+  botIcon: string;
+  botName: string;
   debug: boolean;
   disableReview: boolean;
   disableReleaseNotes: boolean;
@@ -26,6 +28,8 @@ export class Options {
   language: string;
 
   constructor(
+    botIcon: string,
+    botName: string,
     debug: boolean,
     disableReview: boolean,
     disableReleaseNotes: boolean,
@@ -45,6 +49,8 @@ export class Options {
     githubConcurrencyLimit = "6",
     language = "en-US"
   ) {
+    this.botIcon = botIcon;
+    this.botName = botName;
     this.debug = debug;
     this.disableReview = disableReview;
     this.disableReleaseNotes = disableReleaseNotes;
@@ -70,6 +76,7 @@ export class Options {
   // print all options using core.info
   print(): void {
     console.log("\x1b[36m%s\x1b[0m", "Printing options... <options.print()>");
+    info(`bot_name: ${this.botName}`);
     info(`debug: ${this.debug}`);
     info(`disable_review: ${this.disableReview}`);
     info(`disable_release_notes: ${this.disableReleaseNotes}`);

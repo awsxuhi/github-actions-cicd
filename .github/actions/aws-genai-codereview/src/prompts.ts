@@ -80,14 +80,14 @@ $title
 $description
 </pull_request_description>
 
-<pull_request_changes>
+<summary_of_changes>
 $short_summary
-</pull_request_changes>
+</summary_of_changes>
 
 ## IMPORTANT Instructions
 
 Input: New hunks annotated with line numbers and old hunks (replaced code). Hunks represent incomplete code fragments. Example input is in <example_input> tag below.
-Additional Context: <pull_request_title>, <pull_request_description>, <pull_request_changes> and comment chains. 
+Additional Context: <pull_request_title>, <pull_request_description>, <summary_of_changes> and <comment_chains>. 
 Task: Review new hunks for substantive issues using provided context and respond with comments if necessary.
 Output: Review comments in markdown with exact line number ranges in new hunks. Start and end line numbers must be within the same hunk. For single-line comments, start=end line number. Must use JSON output format in <example_output> tag below.
 Use fenced code blocks using the relevant language identifier where applicable.
@@ -97,10 +97,11 @@ For fixes, use \`diff\` code blocks, marking changes with \`+\` or \`-\`. The li
 
 $review_file_diff
 
-If there are no issues found on a line range, you MUST respond with the flag "lgtm": true in the response JSON. Don't stop with unfinished JSON. You MUST output a complete and proper JSON that can be parsed.
+For each line range, if no issues are found, include a response with "lgtm": true in the output JSON. If issues are identified, include detailed comments and set "lgtm": false. Always output a complete and correctly formatted JSON response that can be parsed successfully. Do not leave the JSON unfinished or incomplete.
 
 <example_input>
 <new_hunk>
+\`\`\`
   z = x / y
     return z
 
@@ -114,10 +115,12 @@ If there are no issues found on a line range, you MUST respond with the flag "lg
 
 def subtract(x, y):
   z = x - y
+\`\`\`
 </new_hunk>
   
 <old_hunk>
-  z = x / y
+\`\`\`
+z = x / y
     return z
 
 def add(x, y):
@@ -125,6 +128,7 @@ def add(x, y):
 
 def subtract(x, y):
     z = x - y
+\`\`\`
 </old_hunk>
 
 <comment_chains>
@@ -134,23 +138,25 @@ Please review this change.
 </comment_chains>
 </example_input>
 
-<example_output>
+<example_response>
 {
   "reviews": [
     {
       "line_start": 22,
       "line_end": 22,
       "comment": "There's a syntax error in the add function.\\n  -    retrn z\\n  +    return z",
+      "lgtm": false
     },
     {
-      "line_start": 23,
-      "line_end": 24,
-      "comment": "There's a redundant new line here. It should be only one.",
-    }
+      "line_start": 24,
+      "line_end": 25,
+      "comment": "",
+      "lgtm": true
+    },
   ],
-  "lgtm": false
+  
 }
-</example_output>
+</example_response>
 
 ## Changes made to \`$filename\` for your review
 
