@@ -93,16 +93,6 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   );
   printWithColor("inputs", inputs, 2);
 
-  const [hasExistingReview, highestReviewedCommitId_2ndApproach] = await findLatestReviewedCommit(
-    repo.owner,
-    repo.repo,
-    context.payload.pull_request.number,
-    `**${options.botName}**`,
-    context.payload.pull_request.head.sha
-  );
-  printWithColor("hasExistingReview", hasExistingReview);
-  printWithColor("highestReviewedCommitId_2ndApproach", highestReviewedCommitId_2ndApproach);
-
   await debugPrintCommitSha(
     context.payload.pull_request.base.sha,
     context.payload.pull_request.head.sha,

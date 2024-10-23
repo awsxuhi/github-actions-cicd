@@ -2,6 +2,23 @@ import { context as github_context } from "@actions/github";
 import { octokit } from "../octokit";
 import { printWithColor } from "@/utils";
 
+/****************************************************************************************************
+ * xuhi: I eventually didn't use this function to get the highest reviewed commit id,
+ * but I kept it here for reference. This function looks not a good way to find the id.
+ * 
+ * To invoke it in review().ts, paste below lines:
+ * 
+ const [hasExistingReview, highestReviewedCommitId_2ndApproach] = await findLatestReviewedCommit(
+    repo.owner,
+    repo.repo,
+    context.payload.pull_request.number,
+    `**${options.botName}**`,
+    context.payload.pull_request.head.sha
+  );
+  printWithColor("hasExistingReview", hasExistingReview);
+  printWithColor("highestReviewedCommitId_2ndApproach", highestReviewedCommitId_2ndApproach);
+ ***************************************************************************************************/
+
 type ReviewResult = [boolean, string]; // Return type as a tuple with boolean and string
 
 interface Review {
@@ -29,41 +46,22 @@ interface Review {
 export async function findLatestReviewedCommit(owner: string, repo: string, pull_number: number, searchString: string, baseSha: string): Promise<ReviewResult> {
   const context = github_context;
 
-  // Get all comments for the specified pull request
-  const commentsResponse = await octokit.issues.listComments({
-    owner,
-    repo,
-    issue_number: pull_number, // PR numbers are treated as issue numbers in GitHub API
-  });
-
-  const comments = commentsResponse.data;
-
-  // Ensure comments exist and assign them to a strongly-typed array
-  comments.forEach((comment: any) => {
-    printWithColor("All comments:", comment.body);
-  });
-
-  const filteredComments = comments.filter((comment: any) => comment.body && comment.body.includes(searchString));
-  filteredComments.forEach((comment: any) => {
-    printWithColor("Filtered comments:", comment.body);
-  });
-
   // Get all reviews for the specified pull request
   const reviewsResponse = await octokit.pulls.listReviews({
     owner,
     repo,
     pull_number,
   });
-  printWithColor("reviewsResponse", reviewsResponse, 2);
+  printWithColor("reviewsResponse (result from octokit.pulls.listReviews)", reviewsResponse, 2);
 
   // Ensure reviews exist and assign them to a strongly-typed array
   const reviews: Review[] = reviewsResponse.data as Review[];
   printWithColor("# of existing reviews: ", reviews.length);
   printWithColor("searchString: ", searchString);
 
-  reviews.forEach((review) => {
-    printWithColor("All reviews:", review.body);
-  });
+  // reviews.forEach((review) => {
+  //   printWithColor("All reviews:", review.body);
+  // });
 
   // Filter reviews that include the search string at the beginning of the body
   // const filteredReviews = reviews.filter((review) => review.body && review.body.startsWith(searchString));
