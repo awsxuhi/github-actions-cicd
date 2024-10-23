@@ -38,6 +38,8 @@ export async function findLatestReviewedCommit(owner: string, repo: string, pull
 
   // Ensure reviews exist and assign them to a strongly-typed array
   const reviews: Review[] = reviewsResponse.data as Review[];
+  printWithColor("# of existing reviews: ", reviews.length);
+  printWithColor("searchString: ", searchString);
 
   // Filter reviews that include the search string at the beginning of the body
   // const filteredReviews = reviews.filter((review) => review.body && review.body.startsWith(searchString));
