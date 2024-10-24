@@ -26,6 +26,7 @@ export class Options {
   lightTokenLimits: TokenLimits;
   heavyTokenLimits: TokenLimits;
   language: string;
+  fileDiffFormatInPrompt: string;
 
   constructor(
     botIcon: string,
@@ -47,7 +48,8 @@ export class Options {
     bedrockTimeoutMS = "120000",
     bedrockConcurrencyLimit = "6",
     githubConcurrencyLimit = "6",
-    language = "en-US"
+    language = "en-US",
+    fileDiffFormatInPrompt = "standard_diff_block"
   ) {
     this.botIcon = botIcon;
     this.botName = botName;
@@ -71,6 +73,7 @@ export class Options {
     this.lightTokenLimits = new TokenLimits(bedrockLightModel);
     this.heavyTokenLimits = new TokenLimits(bedrockHeavyModel);
     this.language = language;
+    this.fileDiffFormatInPrompt = fileDiffFormatInPrompt;
   }
 
   // print all options using core.info
@@ -97,6 +100,7 @@ export class Options {
     info(`summary_token_limits: ${this.lightTokenLimits.string()}`);
     info(`review_token_limits: ${this.heavyTokenLimits.string()}`);
     info(`language: ${this.language}`);
+    info(`file_diff_format_in_prompt: $(this.fileDiffFormatInPrompt)`);
     console.log("\x1b[36m%s\x1b[0m\n", "End of Printing options... <options.print()>");
   }
 

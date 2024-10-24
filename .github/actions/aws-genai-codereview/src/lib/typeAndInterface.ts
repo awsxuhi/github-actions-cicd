@@ -4,7 +4,7 @@ export type FileDiff = components["schemas"]["diff-entry"];
 
 export type Commit = components["schemas"]["commit"];
 
-export type FilteredFile = [string, string, string, Array<[number, number, string]>];
+export type FilteredFile = [string, string, string, Array<[number, number, string, string]>];
 
 export interface FilesResultFromCompareCommits {
   sha: string;

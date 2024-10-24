@@ -299,7 +299,7 @@ async function run(retryCount: number = 3) {
     const changedFiles = parseDiff(diff);
     printWithColor(`Found ${changedFiles.length} changed files.`);
     printWithColor("changedFiles (first 2) by printWithColor", changedFiles.slice(0, 2), 3);
-    console.log("changedFiles (first 2) by console.log", changedFiles);
+    changedFiles.forEach((file) => printWithColor("file", file.chunks, 3));
 
     const excludePatterns = core
       .getInput("exclude")

@@ -111,7 +111,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     context.payload.pull_request.base.sha,
     context.payload.pull_request.head.sha
   );
-  console.log("fileDiffString:", fileDiffString);
+  console.log("\nfileDiffString: the value is as follows\n", fileDiffString);
 
   // files.length === 0 means there is no changes since last reviewed commit.
   if (files.length === 0) {
@@ -151,18 +151,15 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   const filesAndChanges = await getFilesWithHunksArray(filterSelectedFiles, options);
 
   // Print the first 2 elements for debug purpose ONLY, you can remove below lines
-  // filesAndChanges: [filename, fileContent, fileDiff, patches: array<[number, number, string]>] []
+  // filesAndChanges: [filename, fileContent<the full content of the old file>, fileDiff, patches: array<[number, number, string]>] []
   if (filesAndChanges.length === 0) {
     printWithColor("Skipped: no files to review.");
     return;
   } else if (filesAndChanges.length === 1) {
-    printWithColor("filesAndChanges has only one element:", [filesAndChanges[0][0], filesAndChanges[0][3]], 2);
-    console.log("filesAndChanges has only one element:", [filesAndChanges[0][0], filesAndChanges[0][1], filesAndChanges[0][2], filesAndChanges[0][3]]);
+    printWithColor("filesAndChanges has only one element:", [filesAndChanges[0][0], filesAndChanges[0][1], filesAndChanges[0][2], filesAndChanges[0][3]]);
   } else {
-    printWithColor("The 1st element of filesAndChanges:", [filesAndChanges[0][0], filesAndChanges[0][3]], 2);
-    printWithColor("The 2nd element of filesAndChanges:", [filesAndChanges[1][0], filesAndChanges[1][3]], 2);
-    console.log("The 1st element of filesAndChanges::", [filesAndChanges[0][0], filesAndChanges[0][1], filesAndChanges[0][2], filesAndChanges[0][3]]);
-    console.log("The 2nd element of filesAndChanges:", [filesAndChanges[1][0], filesAndChanges[1][1], filesAndChanges[1][2], filesAndChanges[1][3]]);
+    printWithColor("The 1st element of filesAndChanges:", [filesAndChanges[0][0], filesAndChanges[0][1], filesAndChanges[0][2], filesAndChanges[0][3]]);
+    printWithColor("The 2nd element of filesAndChanges:", [filesAndChanges[1][0], filesAndChanges[1][1], filesAndChanges[1][2], filesAndChanges[1][3]]);
   }
 
   /********************************************************************************************************************
