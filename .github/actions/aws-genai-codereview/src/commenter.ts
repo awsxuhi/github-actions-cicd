@@ -329,7 +329,7 @@ createReview 的 event 参数：在调用 createReview 时，指定的 event 参
         // eslint-disable-next-line camelcase
         pull_number: pullNumber,
         // eslint-disable-next-line camelcase
-        commit_id: commitId,
+        commit_id: commitId, //xuhi,comment out for testing
         comments: this.reviewCommentsBuffer.map((comment) => generateCommentData(comment)),
       });
 

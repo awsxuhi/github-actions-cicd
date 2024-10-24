@@ -138,7 +138,7 @@ Please review this change.
 </comment_chains>
 </example_input>
 
-<example_response>
+<example_output>
 {
   "reviews": [
     {
@@ -156,12 +156,85 @@ Please review this change.
   ],
   
 }
-</example_response>
+</example_output>
 
 ## Changes made to \`$filename\` for your review
 
 $patches
 `;
+
+  reviewFileDiffUsingStandardDiffBlock = `
+Human: Your task is to review pull requests (PR). Instructions:
+- Provide the response in the following JSON format: 
+  {"reviews": [{"line_start": <line_start_number>, "line_end": <line_end_number>, "comment": "<review_comment>", "lgtm": <true_or_false>}]}
+- For each hunk (diff code block), if no issues are found, include a response with "lgtm": true in the output JSON. If issues are identified, include detailed comments and set "lgtm": false.
+- Always output a complete and correctly formatted JSON response that can be parsed successfully. Do not leave the JSON unfinished or incomplete. If no comments are needed for the entire PR, output \`{"reviews": []}\`.
+- \`lgtm\` stands for "Looks Good to Me". Set \`lgtm\` to true when no issues are found and false when issues are present.
+- You can refer to a specific example in the <example_response> tag below for the correct JSON format.
+- DO NOT give positive comments or compliments.
+- DO NOT give advice on renaming variable names or writing more descriptive variable names.
+- Provide comments and suggestions ONLY if there is something to improve, otherwise return an empty "reviews" array.
+- Provide at most 20 comments per PR. It's up to you to decide which comments to include.
+- Write each comment in GitHub Markdown format.
+- Use the given description only for the overall context and only comment on the code changes.
+- IMPORTANT: NEVER suggest adding comments to the code.
+- IMPORTANT: Evaluate the entire diff in the PR before adding any comments.
+
+<pull_request_title>
+$title 
+</pull_request_title>
+
+<pull_request_description>
+$description
+</pull_request_description>
+
+<summary_of_changes>
+$short_summary
+</summary_of_changes>
+
+<example_response>
+{
+  "reviews": [
+    {
+      "line_start": 22,
+      "line_end": 22,
+      "comment": "There's a syntax error in the add function.\\n  -    retrn z\\n  +    return z",
+      "lgtm": false
+    },
+    {
+      "line_start": 24,
+      "line_end": 25,
+      "comment": "This is an added comment, and removing it will not affect the code.",
+      "lgtm": true
+    },
+    {
+      "line_start": 127,
+      "line_end": 135,
+      "comment": "Instead of returning an empty array and string, consider throwing an error or returning a more descriptive object to indicate the reason for failure.",
+      "lgtm": false
+    }
+  ]
+}
+</example_response>
+
+If no issues are found across all hunks, the response should be:
+<example_response>
+{
+  "reviews": []
+}
+</example_response>
+
+The content in the <file_content> tag is the complete file content of \`$filename\` before modification. When you review the modified code snippets (i.e., hunks), you can refer to the entire file content at the same time.
+<file_content>
+$file_content
+</file_content>
+
+TAKE A DEEP BREATH AND WORK ON THIS PROBLEM STEP-BY-STEP.
+
+Changes made to \`$filename\` for your review:
+$patches
+
+Assistant:`;
 
   comment = `
 $system_message
@@ -253,5 +326,9 @@ $comment
 
   renderReviewFileDiff(inputs: Inputs): string {
     return inputs.render(this.reviewFileDiff);
+  }
+
+  renderReviewFileDiffUsingStandardDiffBlock(inputs: Inputs): string {
+    return inputs.render(this.reviewFileDiffUsingStandardDiffBlock);
   }
 }

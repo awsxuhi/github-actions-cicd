@@ -104,13 +104,14 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   /********************************************************************************************************************
   3. Get the filtered files list for review, based on the highestReviewedCommitId and the current PR branch
   ********************************************************************************************************************/
-  const { files, commits } = await getFilesForReviewAfterTheHighestReviewedCommitId(
+  const [files, commits, fileDiffString] = await getFilesForReviewAfterTheHighestReviewedCommitId(
     repo.owner,
     repo.repo,
     highestReviewedCommitId,
     context.payload.pull_request.base.sha,
     context.payload.pull_request.head.sha
   );
+  // console.log("\nfileDiffString: the value is as follows\n", fileDiffString);
 
   // files.length === 0 means there is no changes since last reviewed commit.
   if (files.length === 0) {
@@ -122,7 +123,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     warning("Skipped: commits is null");
     return;
   } else {
-    printWithColor("commits (=incrementalDiff.data.commits):", commits);
+    // printWithColor("commits (=incrementalDiff.data.commits):", commits);
     console.log(`\n\x1b[36m%s\x1b[0m`, `List all elements of commits Array (total ${commits.length} elements since last review, latest one is at the bottom):`);
     commits.forEach((commit) => {
       console.log(`${commit.sha}`);
@@ -150,15 +151,15 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   const filesAndChanges = await getFilesWithHunksArray(filterSelectedFiles, options);
 
   // Print the first 2 elements for debug purpose ONLY, you can remove below lines
-  // filesAndChanges: [filename, fileContent, fileDiff, patches: array<[number, number, string]>] []
+  // filesAndChanges: [filename, fileContent<the full content of the old file>, fileDiff, patches: array<[number, number, string]>] []
   if (filesAndChanges.length === 0) {
     printWithColor("Skipped: no files to review.");
     return;
   } else if (filesAndChanges.length === 1) {
-    printWithColor("filesAndChanges has only one element:", [filesAndChanges[0][0], filesAndChanges[0][3]], 2);
+    printWithColor("filesAndChanges has only one element:", [filesAndChanges[0][0], filesAndChanges[0][3]]);
   } else {
-    printWithColor("The 1st element of filesAndChanges:", [filesAndChanges[0][0], filesAndChanges[0][3]], 2);
-    printWithColor("The 2nd element of filesAndChanges:", [filesAndChanges[1][0], filesAndChanges[1][3]], 2);
+    printWithColor("The 1st element of filesAndChanges:", [filesAndChanges[0][0], filesAndChanges[0][3]]);
+    printWithColor("The 2nd element of filesAndChanges:", [filesAndChanges[1][0], filesAndChanges[1][3]]);
   }
 
   /********************************************************************************************************************
@@ -301,8 +302,8 @@ ${SHORT_SUMMARY_END_TAG}
     /* Use lgtmCount and reviewCount to track the number of files that have passed the review and the total number of files reviewed, respectively. The total number of successfully reviewed files is calculated as lgtmCount + reviewCount.
      */
     const reviewsFailed: string[] = [];
-    let lgtmCount = 0;
-    let reviewCount = 0;
+    const lgtmCount = { value: 0 };
+    const reviewCount = { value: 0 };
 
     const reviewContext: ReviewContext = {
       inputs,
@@ -337,8 +338,8 @@ ${SHORT_SUMMARY_END_TAG}
       summariesFailed, // 全局变量，包含摘要失败的文件列表
       reviewsFailed, // 全局变量，包含审查失败的文件列表
       reviewsSkipped, // 全局变量，包含被跳过的文件列表（因微小变动）
-      reviewCount, // 全局变量，包含已生成的审查评论数量
-      lgtmCount // 全局变量，包含 LGTM 数量
+      reviewCount.value, // 全局变量，包含已生成的审查评论数量
+      lgtmCount.value // 全局变量，包含 LGTM 数量
     );
     // add existing_comment_ids_block with latest head sha
     summarizeComment += `\n${commenter.addReviewedCommitId(existingCommitIdsBlock, context.payload.pull_request.head.sha)}`;

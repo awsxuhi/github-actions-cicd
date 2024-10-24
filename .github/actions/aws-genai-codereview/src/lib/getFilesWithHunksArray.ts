@@ -35,12 +35,13 @@ export async function getFilesWithHunksArray(filterSelectedFiles: Array<FilesRes
             owner: context.repo.owner,
             repo: context.repo.repo,
             path: file.filename,
-            ref: context.payload.pull_request.base.sha, // base is the initial commit of the PR, i.e., Target
+            ref: context.payload.pull_request.base.sha, // base is the initial commit of the PR, i.e., Target, the old file before modifying
           });
           if (contents.data && !Array.isArray(contents.data) && contents.data.type === "file" && contents.data.content) {
             fileContent = Buffer.from(contents.data.content, "base64").toString();
           }
         } catch (e) {
+          fileContent = "";
           warning(`Failed to get file contents: ${e}. This is OK if it's a new file.`);
         }
 
@@ -48,13 +49,14 @@ export async function getFilesWithHunksArray(filterSelectedFiles: Array<FilesRes
         let fileDiff = file.patch || "";
 
         // 3. Get hunks from file.patch
-        const patches: Array<[number, number, string]> = [];
+        const patches: Array<[number, number, string, string]> = [];
         for (const patch of splitPatch(file.patch)) {
           const patchLines = patchStartEndLine(patch); // Get start and end lines
           if (!patchLines) continue;
           const hunks = parsePatch(patch);
           if (!hunks) continue;
 
+          // Construct the hunks string in original format
           const hunksStr = `
 <new_hunk>
 \`\`\`
@@ -68,7 +70,33 @@ ${hunks.oldHunk}
 \`\`\`
 </old_hunk>
 `;
-          patches.push([patchLines.newHunk.startLine, patchLines.newHunk.endLine, hunksStr]);
+
+          // Standard diff format with line numbers and symbols
+          const lines = patch.split("\n").slice(1); // Skip the @@ line
+          let standardDiffFormat = `@@ -${patchLines.oldHunk.startLine},${patchLines.oldHunk.endLine - patchLines.oldHunk.startLine + 1} +${
+            patchLines.newHunk.startLine
+          },${patchLines.newHunk.endLine - patchLines.newHunk.startLine + 1} @@\n`;
+
+          let newLine = patchLines.newHunk.startLine;
+          for (const line of lines) {
+            if (line.startsWith("-")) {
+              standardDiffFormat += `${patchLines.oldHunk.startLine} ${line}\n`;
+              patchLines.oldHunk.startLine++;
+            } else if (line.startsWith("+")) {
+              standardDiffFormat += `${newLine} ${line}\n`;
+              newLine++;
+            } else {
+              // context line
+              standardDiffFormat += `${newLine} ${line}\n`;
+              patchLines.oldHunk.startLine++;
+              newLine++;
+            }
+          }
+
+          // Wrap the standardDiffFormat with a markdown diff block
+          standardDiffFormat = `\`\`\`diff\n${standardDiffFormat}\`\`\``;
+
+          patches.push([patchLines.newHunk.startLine, patchLines.newHunk.endLine, hunksStr, standardDiffFormat]);
         }
 
         if (patches.length > 0) {

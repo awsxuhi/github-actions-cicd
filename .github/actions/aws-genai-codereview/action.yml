@@ -49,6 +49,10 @@ inputs:
     required: false
     description: "Disable release notes"
     default: "false"
+  file_diff_format_in_prompt:
+    required: false
+    description: "use new hunk and old hunk pairs (i.e., hunk_pairs) or standard file diff (i.e., standard_diff_block)"
+    default: "standard_diff_block"
   github_concurrency_limit:
     required: false
     description: "How many concurrent API calls to make to GitHub?"

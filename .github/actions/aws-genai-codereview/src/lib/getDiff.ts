@@ -9,14 +9,24 @@ import { octokit } from "../octokit";
  * @returns The diff data between the specified commits
  */
 export async function getDiffBetweenCommits(owner: string, repo: string, base: string, head: string): Promise<any> {
-  const diffResponse = await octokit.repos.compareCommits({
+  const diffJsonResponse = await octokit.repos.compareCommits({
     owner,
     repo,
     base,
     head,
   });
 
-  return diffResponse;
+  const diffStringResponse = await octokit.repos.compareCommits({
+    headers: {
+      accept: "application/vnd.github.v3.diff",
+    },
+    owner,
+    repo,
+    base,
+    head,
+  });
+
+  return [diffJsonResponse, String(diffStringResponse.data)];
 }
 
 /**
