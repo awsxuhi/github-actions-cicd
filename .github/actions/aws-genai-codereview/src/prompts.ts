@@ -192,8 +192,6 @@ $description
 $short_summary
 </summary_of_changes>
 
-TAKE A DEEP BREATH AND WORK ON THIS PROBLEM STEP-BY-STEP.
-
 <example_response>
 {
   "reviews": [
@@ -228,11 +226,12 @@ If no issues are found across all hunks, the response should be:
 
 The content in the <file_content> tag is the complete file content of \`$filename\` before modification. When you review the modified code snippets (i.e., hunks), you can refer to the entire file content at the same time.
 <file_content>
-$fileContent
+$file_content
 </file_content>
 
-Changes made to \`$filename\` for your review:
+TAKE A DEEP BREATH AND WORK ON THIS PROBLEM STEP-BY-STEP.
 
+Changes made to \`$filename\` for your review:
 $patches
 
 Assistant:`;

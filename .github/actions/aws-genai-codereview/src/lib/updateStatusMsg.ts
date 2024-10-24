@@ -4,8 +4,8 @@ export const updateStatusMsg = (
   summariesFailed: string[],
   reviewsFailed: string[],
   reviewsSkipped: string[],
-  reviewCount: number,
-  lgtmCount: number
+  reviewCountValue: number,
+  lgtmCountValue: number
 ): string => {
   return (
     statusMsg +
@@ -57,10 +57,10 @@ ${
     : ""
 }
 <details>
-<summary>Review comments generated (${reviewCount + lgtmCount})</summary>
+<summary>Review comments generated (${reviewCountValue + lgtmCountValue})</summary>
 
-* Review: ${reviewCount}
-* LGTM: ${lgtmCount}
+* Review: ${reviewCountValue}
+* LGTM: ${lgtmCountValue}
 
 </details>
 

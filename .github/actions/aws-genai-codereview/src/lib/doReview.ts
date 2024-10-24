@@ -14,8 +14,8 @@ export interface ReviewContext {
   options: Options;
   commenter: Commenter;
   heavyBot: Bot;
-  lgtmCount: number;
-  reviewCount: number;
+  lgtmCount: { value: number };
+  reviewCount: { value: number };
   reviewsFailed: string[];
   reviewsSkipped: string[];
 }
@@ -104,7 +104,7 @@ export const doReview = async (
 
       if (commentChain !== "") {
         ins.patches += `\n
-  Review the following code diff in the file "${filename}". Git diff to review:
+Review the following code diff in the file "${filename}". Git diff to review:
 
   ${standardDiffFormat}
 
@@ -115,7 +115,7 @@ ${commentChain}
 </comment_chains>`;
       } else {
         ins.patches += `\n
-  Review the following code diff in the file "${filename}". Git diff to review:
+Review the following code diff in the file "${filename}". Git diff to review:
 
   ${standardDiffFormat}`;
       }
@@ -147,8 +147,8 @@ ${commentChain}
           console.log("options.reviewCommentLGTM:", options.reviewCommentLGTM);
           // if (!options.reviewCommentLGTM && (review.comment.includes("LGTM") || review.comment.includes("looks good to me"))) {
           if (!options.reviewCommentLGTM && Boolean(review.lgtm) === true) {
-            reviewContext.lgtmCount += 1;
-            console.log(`\n\x1b[36m%s\x1b[0m`, `lgtm Count for ${filename}: ${reviewContext.lgtmCount}\n`);
+            reviewContext.lgtmCount.value += 1;
+            console.log(`\n\x1b[36m%s\x1b[0m`, `lgtm Count for ${filename}: ${reviewContext.lgtmCount.value}\n`);
             continue;
           }
           if (context.payload.pull_request == null) {
@@ -157,7 +157,7 @@ ${commentChain}
           }
 
           try {
-            reviewContext.reviewCount += 1;
+            reviewContext.reviewCount.value += 1;
             await commenter.bufferReviewComment(filename, review.startLine, review.endLine, `**${options.botName}** ${options.botIcon}: ${review.comment}`);
           } catch (e: any) {
             reviewContext.reviewsFailed.push(`${filename} comment failed (${e})`);
@@ -261,8 +261,8 @@ ${commentChain}
           console.log("options.reviewCommentLGTM:", options.reviewCommentLGTM);
           // if (!options.reviewCommentLGTM && (review.comment.includes("LGTM") || review.comment.includes("looks good to me"))) {
           if (!options.reviewCommentLGTM && Boolean(review.lgtm) === true) {
-            reviewContext.lgtmCount += 1;
-            console.log(`\n\x1b[36m%s\x1b[0m`, `lgtm Count for ${filename}: ${reviewContext.lgtmCount}\n`);
+            reviewContext.lgtmCount.value += 1;
+            console.log(`\n\x1b[36m%s\x1b[0m`, `lgtm Count for ${filename}: ${reviewContext.lgtmCount.value}\n`);
             continue;
           }
           if (context.payload.pull_request == null) {
@@ -271,7 +271,7 @@ ${commentChain}
           }
 
           try {
-            reviewContext.reviewCount += 1;
+            reviewContext.reviewCount.value += 1;
             await commenter.bufferReviewComment(filename, review.startLine, review.endLine, `**${options.botName}** ${options.botIcon}: ${review.comment}`);
           } catch (e: any) {
             reviewContext.reviewsFailed.push(`${filename} comment failed (${e})`);

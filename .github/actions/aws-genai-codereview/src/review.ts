@@ -111,7 +111,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     context.payload.pull_request.base.sha,
     context.payload.pull_request.head.sha
   );
-  console.log("\nfileDiffString: the value is as follows\n", fileDiffString);
+  // console.log("\nfileDiffString: the value is as follows\n", fileDiffString);
 
   // files.length === 0 means there is no changes since last reviewed commit.
   if (files.length === 0) {
@@ -156,10 +156,10 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     printWithColor("Skipped: no files to review.");
     return;
   } else if (filesAndChanges.length === 1) {
-    printWithColor("filesAndChanges has only one element:", [filesAndChanges[0][0], filesAndChanges[0][1], filesAndChanges[0][2], filesAndChanges[0][3]]);
+    printWithColor("filesAndChanges has only one element:", [filesAndChanges[0][0], filesAndChanges[0][3]]);
   } else {
-    printWithColor("The 1st element of filesAndChanges:", [filesAndChanges[0][0], filesAndChanges[0][1], filesAndChanges[0][2], filesAndChanges[0][3]]);
-    printWithColor("The 2nd element of filesAndChanges:", [filesAndChanges[1][0], filesAndChanges[1][1], filesAndChanges[1][2], filesAndChanges[1][3]]);
+    printWithColor("The 1st element of filesAndChanges:", [filesAndChanges[0][0], filesAndChanges[0][3]]);
+    printWithColor("The 2nd element of filesAndChanges:", [filesAndChanges[1][0], filesAndChanges[1][3]]);
   }
 
   /********************************************************************************************************************
@@ -302,8 +302,8 @@ ${SHORT_SUMMARY_END_TAG}
     /* Use lgtmCount and reviewCount to track the number of files that have passed the review and the total number of files reviewed, respectively. The total number of successfully reviewed files is calculated as lgtmCount + reviewCount.
      */
     const reviewsFailed: string[] = [];
-    let lgtmCount = 0;
-    let reviewCount = 0;
+    const lgtmCount = { value: 0 };
+    const reviewCount = { value: 0 };
 
     const reviewContext: ReviewContext = {
       inputs,
@@ -338,8 +338,8 @@ ${SHORT_SUMMARY_END_TAG}
       summariesFailed, // 全局变量，包含摘要失败的文件列表
       reviewsFailed, // 全局变量，包含审查失败的文件列表
       reviewsSkipped, // 全局变量，包含被跳过的文件列表（因微小变动）
-      reviewCount, // 全局变量，包含已生成的审查评论数量
-      lgtmCount // 全局变量，包含 LGTM 数量
+      reviewCount.value, // 全局变量，包含已生成的审查评论数量
+      lgtmCount.value // 全局变量，包含 LGTM 数量
     );
     // add existing_comment_ids_block with latest head sha
     summarizeComment += `\n${commenter.addReviewedCommitId(existingCommitIdsBlock, context.payload.pull_request.head.sha)}`;
