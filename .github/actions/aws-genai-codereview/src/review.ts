@@ -122,7 +122,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     warning("Skipped: commits is null");
     return;
   } else {
-    printWithColor("commits (=incrementalDiff.data.commits):", commits);
+    // printWithColor("commits (=incrementalDiff.data.commits):", commits);
     console.log(`\n\x1b[36m%s\x1b[0m`, `List all elements of commits Array (total ${commits.length} elements since last review, latest one is at the bottom):`);
     commits.forEach((commit) => {
       console.log(`${commit.sha}`);
@@ -156,9 +156,12 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     return;
   } else if (filesAndChanges.length === 1) {
     printWithColor("filesAndChanges has only one element:", [filesAndChanges[0][0], filesAndChanges[0][3]], 2);
+    console.log("filesAndChanges has only one element:", [filesAndChanges[0][0], filesAndChanges[0][1], filesAndChanges[0][2], filesAndChanges[0][3]]);
   } else {
     printWithColor("The 1st element of filesAndChanges:", [filesAndChanges[0][0], filesAndChanges[0][3]], 2);
     printWithColor("The 2nd element of filesAndChanges:", [filesAndChanges[1][0], filesAndChanges[1][3]], 2);
+    console.log("The 1st element of filesAndChanges::", [filesAndChanges[0][0], filesAndChanges[0][1], filesAndChanges[0][2], filesAndChanges[0][3]]);
+    console.log("The 2nd element of filesAndChanges:", [filesAndChanges[1][0], filesAndChanges[1][1], filesAndChanges[1][2], filesAndChanges[1][3]]);
   }
 
   /********************************************************************************************************************

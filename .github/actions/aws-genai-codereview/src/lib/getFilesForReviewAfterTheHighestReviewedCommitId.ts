@@ -21,17 +21,17 @@ export async function getFilesForReviewAfterTheHighestReviewedCommitId(
   pullRequestHeadSha: string
 ): Promise<{ files: FileDiff[]; commits: Commit[] }> {
   // Fetch the diff between the highest REVIEWED commit and the latest commit of the PR branch
-  const incrementalDiff = await getDiffBetweenCommits(repoOwner, repoName, highestReviewedCommitId, pullRequestHeadSha);
-  printWithColor("incremental-diff vs. the_last_reviewed_commit_id:", incrementalDiff.data.files?.slice(0, 2));
+  const [incrementalDiffJson, incrementalDiffString] = await getDiffBetweenCommits(repoOwner, repoName, highestReviewedCommitId, pullRequestHeadSha);
+  printWithColor("incremental-diff vs. the_last_reviewed_commit_id:", incrementalDiffJson.data.files?.slice(0, 2));
 
   // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
-  const targetBranchDiff = await getDiffBetweenCommits(repoOwner, repoName, pullRequestBaseSha, pullRequestHeadSha);
+  const [targetBranchDiffJson, targetBranchDiffString] = await getDiffBetweenCommits(repoOwner, repoName, pullRequestBaseSha, pullRequestHeadSha);
   // printWithColor("full-diff vs. target.base:", targetBranchDiff.data.files?.slice(0, 2));
 
   // Define GitHub file diff type
-  const incrementalFiles: FileDiff[] = incrementalDiff.data.files || [];
-  const targetBranchFiles: FileDiff[] = targetBranchDiff.data.files || [];
-  const commits: Commit[] = incrementalDiff.data.commits || [];
+  const incrementalFiles: FileDiff[] = incrementalDiffJson.data.files || [];
+  const targetBranchFiles: FileDiff[] = targetBranchDiffJson.data.files || [];
+  const commits: Commit[] = incrementalDiffJson.data.commits || [];
 
   if (!incrementalFiles || !targetBranchFiles) {
     warning("Skipped: files data is missing");
