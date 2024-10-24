@@ -123,13 +123,14 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     return;
   } else {
     printWithColor("commits (=incrementalDiff.data.commits):", commits);
-    console.log(
-      `\n\x1b[36m%s\x1b[0m`,
-      `List all elements of commits Array (total ${commits.length} elements since last review, latest one is at the bottom). \nWorth Noting: Usually there is only one commit, and its value is context.payload.pull_request.head.sha. \nBut there may be multiple commits. For example, when you merge the changes of the dev branch into the main branch, you submit three commits in a row before creating a pull request from dev to main. At this time, three commits will be listed.):`
-    );
+    console.log(`\n\x1b[36m%s\x1b[0m`, `List all elements of commits Array (total ${commits.length} elements since last review, latest one is at the bottom):`);
     commits.forEach((commit) => {
       console.log(`${commit.sha}`);
     });
+    console.log(
+      `\n\x1b[36m%s\x1b[0m`,
+      `\nWorth Noting: Usually there is only one commit, and its value is context.payload.pull_request.head.sha. \nBut there may be multiple commits. For example, when you merge the changes of the dev branch into the main branch, you submit three commits in a row before creating a pull request from dev to main. At this time, three commits will be listed.).`
+    );
   }
 
   /**
