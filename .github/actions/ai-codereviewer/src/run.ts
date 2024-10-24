@@ -49,8 +49,9 @@ async function analyzeCode(changedFiles: File[], prDetails: PRDetails): Promise<
   printWithColor("Analyzing code...");
 
   const prompt = createPrompt(changedFiles, prDetails);
+  printWithColor("prompt:", prompt);
   const aiResponse = await getAIResponse(prompt);
-  core.info(JSON.stringify(aiResponse, null, 2));
+  // core.info(JSON.stringify(aiResponse, null, 2));
 
   const comments: Array<GithubComment> = [];
 
@@ -172,6 +173,7 @@ async function getAIResponse(prompt: string): Promise<Array<AICommentResponse>> 
       if (!Array.isArray(data?.comments)) {
         throw new Error("Invalid response from Bedrock API: 'comments' not found");
       }
+      printWithColor("data.comments", data.comments);
       return data.comments;
     } catch (parseError) {
       core.error(`Failed to parse JSON: ${sanitizedString}`);

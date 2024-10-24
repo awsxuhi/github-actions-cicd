@@ -123,13 +123,14 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     return;
   } else {
     printWithColor("commits (=incrementalDiff.data.commits):", commits);
+    console.log(`\n\x1b[36m%s\x1b[0m`, `List all elements of commits Array (total ${commits.length} elements since last review, latest one is at the bottom):`);
+    commits.forEach((commit) => {
+      console.log(`${commit.sha}`);
+    });
     console.log(
       `\n\x1b[36m%s\x1b[0m`,
-      `List all elements of commits Array (total ${commits.length} elements since last review, usually=context.payload.pull_request.head.sha):`
+      `NOTE: Usually there is only one commit, and its value is context.payload.pull_request.head.sha. \nBut there may be multiple commits. For example, when you merge the changes of the dev branch into the main branch, you submit three commits in a row before creating a pull request from dev to main. At this time, three commits will be listed.).`
     );
-    commits.forEach((commit) => {
-      console.log(`${commit.sha}\n`);
-    });
   }
 
   /**
@@ -185,6 +186,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     }
   }
 
+  // Step 1: generate the summary for each file (based on its changes, for 1 specific file)
   // 这行代码的主要作用是等待所有的总结操作完成，并将成功的总结结果收集到 summaries 数组中，同时过滤掉那些返回 null 的结果（即总结失败或被跳过的文件）。
   // 得到的结果是一个数组，包含每个 doSummary 调用的返回值（[string, string, boolean] 或 null）。
   // 过滤掉数组中所有 null 值，只保留有效的总结结果。
@@ -200,11 +202,14 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
       ]
   */
 
+  // Step 2: generate the summary for ALL files (based on their changes)
+  inputs.rawSummary = "";
   printWithColor("inputs.rawSummary (1. initial value):", inputs.rawSummary);
   if (summaries.length > 0) {
-    const batchSize = 10;
+    const batchSize = 50; // 50*100words per batch, < 5_000 words, < 200_000 input token limit.
     // join summaries into one in the batches of batchSize
     // and ask the bot to summarize the summaries
+    // Note: The inputs.rawSummary string formed here contains summaries of different files, not just one file.
     for (let i = 0; i < summaries.length; i += batchSize) {
       const summariesBatch = summaries.slice(i, i + batchSize);
       for (const [filename, summary] of summariesBatch) {
@@ -215,30 +220,36 @@ ${filename}: ${summary}
       printWithColor("inputs.rawSummary (2. new value)", inputs.rawSummary);
       console.log(`\n\x1b[36m%s\x1b[0m`, `++++++ end of inputs.rawSummary (new value) ++++++`);
       // ask Bedrock to summarize the summaries
-      const [summarizeResp] = await heavyBot.chat(prompts.renderSummarizeChangesets(inputs));
+      const promptOfRenderSummarizeChangesets = prompts.renderSummarizeChangesets(inputs);
+      printWithColor("promptOfRenderSummarizeChangesets", promptOfRenderSummarizeChangesets);
+      const [summarizeResp] = await heavyBot.chat(promptOfRenderSummarizeChangesets);
       if (summarizeResp === "") {
         warning("summarize: nothing obtained from bedrock");
       } else {
         inputs.rawSummary = summarizeResp;
-        printWithColor("inputs.rawSummary (3. final value with response from Bedrock)", inputs.rawSummary);
+        printWithColor("inputs.rawSummary (3. final value with response from Bedrock, for all files)", inputs.rawSummary);
       }
     }
   }
 
-  // final summary
-  const [summarizeFinalResponse] = await heavyBot.chat(prompts.renderSummarize(inputs));
+  // Step 3: generate final summary (the content of summarizeCmt = ## Walkthrough + ## Changes), based on inputs.raw_summary (for all files)
+  const promptOfRenderSummarize = prompts.renderSummarize(inputs);
+  printWithColor("promptOfRenderSummarize", promptOfRenderSummarize);
+  const [summarizeFinalResponse] = await heavyBot.chat(promptOfRenderSummarize);
   if (summarizeFinalResponse === "") {
     info("summarize: nothing obtained from bedrock");
   }
-  printWithColor("summarizeFinalResponse", summarizeFinalResponse);
+  printWithColor("Step 3, summarizeFinalResponse", summarizeFinalResponse);
 
+  // Step 4: generate final release notes = PR Description, based on inputs.raw_summary (for all files)
   if (options.disableReleaseNotes === false) {
-    // final release notes = PR Description
-    const [releaseNotesResponse] = await heavyBot.chat(prompts.renderSummarizeReleaseNotes(inputs));
+    const promptOfRenderSummarizeReleaseNotes = prompts.renderSummarizeReleaseNotes(inputs);
+    printWithColor("promptOfRenderSummarizeReleaseNotes", promptOfRenderSummarizeReleaseNotes);
+    const [releaseNotesResponse] = await heavyBot.chat(promptOfRenderSummarizeReleaseNotes);
     if (releaseNotesResponse === "") {
       info("release notes: nothing obtained from bedrock");
     } else {
-      printWithColor("releaseNotesResponse", releaseNotesResponse);
+      printWithColor("Step 4, releaseNotesResponse", releaseNotesResponse);
       let message = `### Pull Request Description (Auto-generated by ${options.botName} ${options.botIcon})\n\n`;
       message += releaseNotesResponse;
       try {
@@ -249,10 +260,12 @@ ${filename}: ${summary}
     }
   }
 
-  // generate a short summary as well
-  const [summarizeShortResponse] = await heavyBot.chat(prompts.renderSummarizeShort(inputs));
+  // Step 5: generate a short summary as well, based on inputs.raw_summary (for all files)
+  const promptOfRenderSummarizeShort = prompts.renderSummarizeShort(inputs);
+  printWithColor("promptOfRenderSummarizeShort", promptOfRenderSummarizeShort);
+  const [summarizeShortResponse] = await heavyBot.chat(promptOfRenderSummarizeShort);
   inputs.shortSummary = summarizeShortResponse;
-  printWithColor("summarizeShortResponse", inputs.shortSummary);
+  printWithColor("Step 5, summarizeShortResponse", inputs.shortSummary);
 
   // update summarize comment with more TAG components
   let summarizeComment = `${summarizeFinalResponse}

@@ -116,7 +116,9 @@ ${commentChain}
       /**
        The prefix being `{` serves as a prompt for the large language model to start its response with this character. It indicates to the model that the generated content should follow a JSON structure.
         */
-      const [response] = await heavyBot.chat(prompts.renderReviewFileDiff(ins), "{");
+      const promptOfRenderReviewFileDiff = prompts.renderReviewFileDiff(ins);
+      printWithColor("prompt of renderReviewFileDiff", promptOfRenderReviewFileDiff);
+      const [response] = await heavyBot.chat(promptOfRenderReviewFileDiff, "{");
       if (response === "") {
         info("review: nothing obtained from bedrock");
         reviewContext.reviewsFailed.push(`${filename} (no response)`);

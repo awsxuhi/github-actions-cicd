@@ -19,7 +19,7 @@ export async function debugPrintCommitSha(
   const newHeadSha = newCommitSha || "unknown";
 
   printWithColor("previousHeadSha (the last commit)", previousHeadSha);
-  printWithColor("newHeadSha (the current commit)", newHeadSha);
+  printWithColor("newHeadSha (the current commit=context.payload.after)", newHeadSha);
   printWithColor("context.payload.pull_request.head.sha (the current commit)", currentHead);
   printWithColor("context.payload.pull_request.base.sha (the target base)", targetBase);
   printWithColor("highestReviewedCommitId", highestReviewedCommitId);
