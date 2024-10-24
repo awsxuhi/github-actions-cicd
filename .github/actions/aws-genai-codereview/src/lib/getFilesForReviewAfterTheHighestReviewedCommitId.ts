@@ -19,7 +19,7 @@ export async function getFilesForReviewAfterTheHighestReviewedCommitId(
   highestReviewedCommitId: string,
   pullRequestBaseSha: string,
   pullRequestHeadSha: string
-): Promise<{ files: FileDiff[]; commits: Commit[] }> {
+): Promise<[FileDiff[], Commit[], string]> {
   // Fetch the diff between the highest REVIEWED commit and the latest commit of the PR branch
   const [incrementalDiffJson, incrementalDiffString] = await getDiffBetweenCommits(repoOwner, repoName, highestReviewedCommitId, pullRequestHeadSha);
   printWithColor("incremental-diff vs. the_last_reviewed_commit_id:", incrementalDiffJson.data.files?.slice(0, 2));
@@ -35,7 +35,7 @@ export async function getFilesForReviewAfterTheHighestReviewedCommitId(
 
   if (!incrementalFiles || !targetBranchFiles) {
     warning("Skipped: files data is missing");
-    return { files: [], commits };
+    return [[], commits, ""];
   }
 
   // Filter out any file that is changed compared to the incremental changes
@@ -56,10 +56,10 @@ export async function getFilesForReviewAfterTheHighestReviewedCommitId(
   // If no new files to review
   if (files.length === 0) {
     info("No new files to review since the last commit.");
-    return { files: [], commits };
+    return [[], commits, ""];
   }
 
-  return { files, commits };
+  return [files, commits, incrementalDiffString || ""];
 }
 
 /************************************************************************************************

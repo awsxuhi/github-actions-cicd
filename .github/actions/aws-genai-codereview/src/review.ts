@@ -104,13 +104,14 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
   /********************************************************************************************************************
   3. Get the filtered files list for review, based on the highestReviewedCommitId and the current PR branch
   ********************************************************************************************************************/
-  const { files, commits } = await getFilesForReviewAfterTheHighestReviewedCommitId(
+  const [files, commits, fileDiffString] = await getFilesForReviewAfterTheHighestReviewedCommitId(
     repo.owner,
     repo.repo,
     highestReviewedCommitId,
     context.payload.pull_request.base.sha,
     context.payload.pull_request.head.sha
   );
+  console.log("fileDiffString:", fileDiffString);
 
   // files.length === 0 means there is no changes since last reviewed commit.
   if (files.length === 0) {
