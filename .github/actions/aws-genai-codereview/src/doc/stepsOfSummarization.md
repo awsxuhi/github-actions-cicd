@@ -1,3 +1,11 @@
+## Steps
+
+Summary of changes for 1 file (doSummary)
+=> Summary of changes for all files (the value of inputs.rawSummary)
+=> Format the output based on the content of rawSummary using LLM (generate summarizeCmt = ## Walkthrough + ## Changes)
+=> Based on rawSummary, to generate release notes (a.k.a, PR Description)
+=> Based on rawSummary, to generate short summary (I believe this step has no value.)
+
 ## Step 1: generate the summary for each file (based on its changes)
 
 Right after doSummary()

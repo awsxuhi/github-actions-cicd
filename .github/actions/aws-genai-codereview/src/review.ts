@@ -129,7 +129,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     });
     console.log(
       `\n\x1b[36m%s\x1b[0m`,
-      `\nWorth Noting: Usually there is only one commit, and its value is context.payload.pull_request.head.sha. \nBut there may be multiple commits. For example, when you merge the changes of the dev branch into the main branch, you submit three commits in a row before creating a pull request from dev to main. At this time, three commits will be listed.).`
+      `NOTE: Usually there is only one commit, and its value is context.payload.pull_request.head.sha. \nBut there may be multiple commits. For example, when you merge the changes of the dev branch into the main branch, you submit three commits in a row before creating a pull request from dev to main. At this time, three commits will be listed.).`
     );
   }
 
@@ -186,7 +186,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
     }
   }
 
-  // Step 1: generate the summary for each file (based on its changes)
+  // Step 1: generate the summary for each file (based on its changes, for 1 specific file)
   // 这行代码的主要作用是等待所有的总结操作完成，并将成功的总结结果收集到 summaries 数组中，同时过滤掉那些返回 null 的结果（即总结失败或被跳过的文件）。
   // 得到的结果是一个数组，包含每个 doSummary 调用的返回值（[string, string, boolean] 或 null）。
   // 过滤掉数组中所有 null 值，只保留有效的总结结果。
@@ -202,7 +202,7 @@ export const codeReview = async (lightBot: Bot, heavyBot: Bot, options: Options,
       ]
   */
 
-  // Step 2: generate the summary for all files (based on their changes)
+  // Step 2: generate the summary for ALL files (based on their changes)
   inputs.rawSummary = "";
   printWithColor("inputs.rawSummary (1. initial value):", inputs.rawSummary);
   if (summaries.length > 0) {
@@ -227,12 +227,12 @@ ${filename}: ${summary}
         warning("summarize: nothing obtained from bedrock");
       } else {
         inputs.rawSummary = summarizeResp;
-        printWithColor("inputs.rawSummary (3. final value with response from Bedrock)", inputs.rawSummary);
+        printWithColor("inputs.rawSummary (3. final value with response from Bedrock, for all files)", inputs.rawSummary);
       }
     }
   }
 
-  // Step 3: generate final summary (the content of summarizeCmt = ## Walkthrough + ## Changes)
+  // Step 3: generate final summary (the content of summarizeCmt = ## Walkthrough + ## Changes), based on inputs.raw_summary (for all files)
   const promptOfRenderSummarize = prompts.renderSummarize(inputs);
   printWithColor("promptOfRenderSummarize", promptOfRenderSummarize);
   const [summarizeFinalResponse] = await heavyBot.chat(promptOfRenderSummarize);
@@ -241,7 +241,7 @@ ${filename}: ${summary}
   }
   printWithColor("Step 3, summarizeFinalResponse", summarizeFinalResponse);
 
-  // Step 4: generate final release notes = PR Description
+  // Step 4: generate final release notes = PR Description, based on inputs.raw_summary (for all files)
   if (options.disableReleaseNotes === false) {
     const promptOfRenderSummarizeReleaseNotes = prompts.renderSummarizeReleaseNotes(inputs);
     printWithColor("promptOfRenderSummarizeReleaseNotes", promptOfRenderSummarizeReleaseNotes);
@@ -260,7 +260,7 @@ ${filename}: ${summary}
     }
   }
 
-  // Step 5: generate a short summary as well
+  // Step 5: generate a short summary as well, based on inputs.raw_summary (for all files)
   const promptOfRenderSummarizeShort = prompts.renderSummarizeShort(inputs);
   printWithColor("promptOfRenderSummarizeShort", promptOfRenderSummarizeShort);
   const [summarizeShortResponse] = await heavyBot.chat(promptOfRenderSummarizeShort);
