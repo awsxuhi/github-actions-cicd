@@ -138,7 +138,7 @@ ${tag}`;
       if (pr.data.body) {
         body = pr.data.body;
       }
-      const description = this.getDescription(body)..replace(/[\r\n]+$/, "") + "\r\n";; // at most 2 \n in the end.
+      const description = this.getDescription(body).replace(/[\r\n]+$/, "") + "\r\n"; // at most 2 \n in the end.
 
       const messageClean = this.removeContentWithinTags(message, DESCRIPTION_START_TAG, DESCRIPTION_END_TAG);
       const newDescription = `${description}\n${DESCRIPTION_START_TAG}\n${messageClean}\n${DESCRIPTION_END_TAG}`;
