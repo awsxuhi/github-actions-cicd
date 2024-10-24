@@ -7,7 +7,7 @@ inputs:
   REVIEW_MAX_COMMENTS:
     description: "Maximum number of comments to include in a review (per diff)."
     required: false
-    default: "5"
+    default: "10"
   REVIEW_PROJECT_CONTEXT:
     description: "Project context to include in a review. E.g. Typescript with NestJS + TypeORM"
     required: false
