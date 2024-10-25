@@ -173,6 +173,7 @@ ${COMMENT_TAG}`;
       endLine,
       message,
     });
+    printWithColor("Buffered review comment", this.reviewCommentsBuffer);
   }
 
   async deletePendingReview(pullNumber: number) {

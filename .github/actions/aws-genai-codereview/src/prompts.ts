@@ -231,8 +231,10 @@ $file_content
 
 TAKE A DEEP BREATH AND WORK ON THIS PROBLEM STEP-BY-STEP.
 
-Changes made to \`$filename\` for your review:
+Changes made to the file for your review are as follows:
+\`\`\`
 $patches
+\`\`\`
 
 Assistant:`;
 
