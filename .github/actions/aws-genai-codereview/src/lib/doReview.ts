@@ -260,10 +260,11 @@ ${commentChain}
         for (const review of reviews) {
           console.log("options.reviewCommentLGTM:", options.reviewCommentLGTM);
           // if (!options.reviewCommentLGTM && (review.comment.includes("LGTM") || review.comment.includes("looks good to me"))) {
+          if (!review.comment) continue;
           if (!options.reviewCommentLGTM && Boolean(review.lgtm) === true) {
             reviewContext.lgtmCount.value += 1;
             console.log(`\n\x1b[36m%s\x1b[0m`, `lgtm Count for ${filename}: ${reviewContext.lgtmCount.value}\n`);
-            continue;
+            // continue;
           }
           if (context.payload.pull_request == null) {
             warning("No pull request found, skipping.");

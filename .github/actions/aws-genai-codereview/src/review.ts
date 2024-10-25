@@ -341,6 +341,7 @@ ${SHORT_SUMMARY_END_TAG}
       reviewCount.value, // 全局变量，包含已生成的审查评论数量
       lgtmCount.value // 全局变量，包含 LGTM 数量
     );
+
     // add existing_comment_ids_block with latest head sha
     summarizeComment += `\n${commenter.addReviewedCommitId(existingCommitIdsBlock, context.payload.pull_request.head.sha)}`;
 
