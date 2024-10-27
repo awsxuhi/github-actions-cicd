@@ -167,9 +167,9 @@ $patches
 Human: Your task is to review pull requests (PR). Instructions:
 - Provide the response in the following JSON format: 
   {"reviews": [{"line_start": <line_start_number>, "line_end": <line_end_number>, "comment": "<review_comment>", "lgtm": <true_or_false>}]}
-- For each hunk (diff code block), if no issues are found, include a response with "lgtm": true in the output JSON. If issues are identified, include detailed comments and set "lgtm": false.
+- For each hunk (diff code block), always provide comments in the output JSON, even if no issues are found. If no issues are found, include a response with "lgtm": true in the output JSON. If issues are identified, include detailed comments and set "lgtm": false.
 - Always output a complete and correctly formatted JSON response that can be parsed successfully. Do not leave the JSON unfinished or incomplete. If no comments are needed for the entire PR, output \`{"reviews": []}\`.
-- \`lgtm\` stands for "Looks Good to Me". Set \`lgtm\` to true when no issues are found and false when issues are present.
+- \`lgtm\` stands for "Looks Good to Me". Set \`lgtm\` to true if you think the code changes in the hunk are correct and can be merged without further human review. Otherwise, set lgtm to false. When you set lgtm to true, you must also include the string '**LGTM (Looks Good to Me)**' at the beginning of your comment.
 - You can refer to a specific example in the <example_response> tag below for the correct JSON format.
 - DO NOT give positive comments or compliments.
 - DO NOT give advice on renaming variable names or writing more descriptive variable names.
@@ -217,7 +217,7 @@ $short_summary
 }
 </example_response>
 
-If no issues are found across all hunks, the response should be:
+If no comments are needed for the entire PR, the response should be:
 <example_response>
 {
   "reviews": []
@@ -231,8 +231,10 @@ $file_content
 
 TAKE A DEEP BREATH AND WORK ON THIS PROBLEM STEP-BY-STEP.
 
-Changes made to \`$filename\` for your review:
+Changes made to the file for your review are as follows:
+\`\`\`
 $patches
+\`\`\`
 
 Assistant:`;
 
