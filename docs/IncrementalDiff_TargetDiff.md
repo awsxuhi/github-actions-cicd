@@ -1,4 +1,5 @@
 ---
+layout: default
 title: "Incremental Diff of Commits"
 nav_order: 3
 ---
