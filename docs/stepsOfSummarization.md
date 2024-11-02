@@ -1,0 +1,1 @@
+../.github/actions/aws-genai-codereview/src/doc/stepsOfSummarization.md
