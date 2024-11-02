@@ -1,3 +1,8 @@
+---
+title: "Incremental Diff of Commits"
+nav_order: 3
+---
+
 要说明为什么 `incrementalFiles` 可能存在于增量差异中，但不出现在 `targetBranchFiles` 中，我们可以从 **Git 操作** 和 **差异工具的实现细节** 两个方面举一些具体的例子。
 
 ### 1. **复杂的 Git 操作**：Rebase、Squash 或 Commit 被重写

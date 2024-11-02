@@ -1,0 +1,19 @@
+title: My Project
+remote_theme: pmarsceill/just-the-docs # 使用远程主题
+
+# 主题配置
+just_the_docs:
+  # 自动读取 docs 目录中的文件
+  collections:
+    docs:
+      output: true # 将 docs 目录中的内容输出为网站内容
+  # 开启导航
+  search_enabled: true
+
+# 导航配置（可选）
+defaults:
+  - scope:
+      path: "docs"
+    values:
+      layout: "default" # 使用默认布局
+      parent: "Docs" # 导航栏的父级标题

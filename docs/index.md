@@ -1,3 +1,8 @@
+---
+title: "Home"
+nav_order: 1
+---
+
 # Welcome to My Project
 
 This is a project to show how to use GitHub Actions to do code review.

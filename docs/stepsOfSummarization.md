@@ -1,3 +1,8 @@
+---
+title: "Steps of Summarization of Code Changes"
+nav_order: 2
+---
+
 ## Steps
 
 Summary of changes for 1 file (doSummary)
